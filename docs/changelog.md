@@ -114,3 +114,4 @@
   the log had zero height while the diff was hidden (grid rows), the fold for
   the Git view was saved as a preference, and restarting an unprompted
   worktree session created yet another worktree.
+- v0.3.0 installed: Git view (P8) + collapsible watchtower phases.
