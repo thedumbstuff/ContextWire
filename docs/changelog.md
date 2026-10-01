@@ -115,7 +115,7 @@
   the Git view was saved as a preference, and restarting an unprompted
   worktree session created yet another worktree.
 - v0.3.0 installed: Git view (P8) + collapsible watchtower phases.
-- P9 scheduled agent jobs (in progress): Jobs tab (Alt+6) with a job editor -
+- v0.4.0 installed. P9 scheduled agent jobs (in progress): Jobs tab (Alt+6) with a job editor -
   name, folder, instruction, schedule presets or cron with a next-3-runs
   preview, explicit permissions (nothing allowed unless ticked; full auto is a
   separate, warned option), secrets sealed with Windows DPAPI and passed as
