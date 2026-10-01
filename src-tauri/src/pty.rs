@@ -11,10 +11,24 @@ use std::sync::{Arc, Mutex};
 
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 
-/// Environment variables that make a nested `claude` think it runs inside
+/// Per-session markers that make a nested `claude` think it is a child of
 /// another Claude Code session (e.g. when ContextWire itself was launched
-/// from one). They must not leak into the consoles we host.
-const STRIP_ENV: &[&str] = &["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT"];
+/// from one - then the child even stops saving its transcript). They must
+/// not leak into the consoles we host. User config such as
+/// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is deliberately kept.
+const STRIP_ENV: &[&str] = &[
+    "CLAUDECODE",
+    "CLAUDE_CODE_CHILD_SESSION",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_EXECPATH",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "CLAUDE_CODE_MESSAGING_TOKEN",
+    "CLAUDE_CODE_SESSION_ATTENDED",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_SSE_PORT",
+    "CLAUDE_EFFORT",
+    "CLAUDE_PID",
+];
 
 pub type OutputFn = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
 pub type ExitFn = Arc<dyn Fn(&str, Option<u32>) + Send + Sync>;
