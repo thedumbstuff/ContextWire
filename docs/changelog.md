@@ -43,3 +43,10 @@
 - Fixed: the "may be open in a terminal" pause stuck to a session forever; it
   is now re-checked on every open (5-minute rule, or SessionEnd when global
   hooks are on).
+- Open-source readiness: README rewritten (why, features, install from source,
+  usage, architecture, privacy, limitations, development), MIT LICENSE,
+  CONTRIBUTING (ground rules: never block Claude, never log conversation text,
+  opt-in only for global config), CODE_OF_CONDUCT (Contributor Covenant 2.1),
+  SECURITY (threat model of the hook endpoint), GitHub CI on windows-latest,
+  issue/PR templates, .gitattributes/.editorconfig, scrubbed screenshots.
+  Publishing (repo, CI run, release) waits on decision D5.

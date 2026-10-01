@@ -68,6 +68,13 @@ open_decisions:
     blocks: []
     default: on
 
+  - id: D5
+    title: Where and how to publish
+    status: open
+    why: "Needs the owner: GitHub account/org and repo name, public or private first, and whether to sign the installer (unsigned builds trigger SmartScreen)."
+    blocks: [P5.8]
+    default: "Public GitHub repo under the owner's account, unsigned installer attached to a v0.1.x release"
+
 phases:
   - id: P0
     name: Foundation
@@ -296,6 +303,24 @@ phases:
         effort: 1
         checks:
           - {type: cmd, run: "python watchtower/checks/installed_current.py"}
+
+      - id: P5.7
+        title: "Open-source ready: README, MIT LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, CI, issue/PR templates"
+        status: done
+        effort: 2
+        why: "Owner request 2026-10-01. CI workflow is written but unproven until the repo is pushed to GitHub (no remote yet)."
+        checks:
+          - {type: path, path: LICENSE}
+          - {type: path, path: CONTRIBUTING.md}
+          - {type: path, path: SECURITY.md}
+          - {type: path, path: .github/workflows/ci.yml}
+          - {type: path, path: docs/images/needs-you.png}
+      - id: P5.8
+        title: Publish - create the GitHub repo, push, confirm CI is green, attach the installer to a release
+        status: blocked
+        effort: 2
+        depends_on: [P5.7]
+        decision: D5
 
   - id: P6
     name: Upgrades from the official app
