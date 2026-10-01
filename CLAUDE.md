@@ -43,6 +43,10 @@ shell if `cargo` is not on PATH.
 
 ## Gotchas
 
+- Reinstalling: stop the installed contextwire.exe and wait until the process is
+  really gone before running the NSIS setup with /S - otherwise it exits 2
+  (file in use) and the old version keeps running.
+
 - The hook client must never block Claude: short connect/read timeouts and
   always exit 0.
 - Global hooks are opt-in only; they edit `~/.claude/settings.json` (backup

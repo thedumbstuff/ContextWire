@@ -70,3 +70,4 @@
   progress" to 3 silently ("+ N more"); Activity git icon unclear and second
   line duplicated the name; New session defaulted to the alphabetically first
   workspace (now the most recently used).
+- v0.2.1 installed with the UI audit fixes.
