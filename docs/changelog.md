@@ -115,3 +115,15 @@
   the Git view was saved as a preference, and restarting an unprompted
   worktree session created yet another worktree.
 - v0.3.0 installed: Git view (P8) + collapsible watchtower phases.
+- P9 scheduled agent jobs (in progress): Jobs tab (Alt+6) with a job editor -
+  name, folder, instruction, schedule presets or cron with a next-3-runs
+  preview, explicit permissions (nothing allowed unless ticked; full auto is a
+  separate, warned option), secrets sealed with Windows DPAPI and passed as
+  environment variables, notify rule, timeout, model. Jobs run in the app
+  (catch up once after downtime, never overlap, whole process tree killed on
+  timeout) as `claude -p` with only the granted tools; the agent ends with a
+  STATUS line, the run (report, status, cost, session) is kept (last 50).
+  Report view renders markdown tables and chart blocks; Continue in a session
+  resumes the run's conversation. Verified with the real CLI: a read-only
+  "Docs digest" job ran unattended in 24 s and produced a correct report.
+  Template: Website views (Cloudflare GraphQL Analytics, curl only).

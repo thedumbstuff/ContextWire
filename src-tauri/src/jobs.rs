@@ -698,6 +698,46 @@ mod tests {
         assert!(t.elapsed() < Duration::from_secs(10), "timeout kills the whole tree, took {:?}", t.elapsed());
     }
 
+    /// Real end-to-end run with the installed `claude` CLI (costs one short agent
+    /// turn, so it is opt-in): cargo test real_claude_job -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn real_claude_job() {
+        let dir = std::env::temp_dir().join(format!("cw-realjob-{}", uuid::Uuid::new_v4().simple()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let docs = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().join("docs");
+        let (tx, rx) = std::sync::mpsc::channel::<RunRecord>();
+        let tx = Mutex::new(tx);
+        let m = JobManager::new(&dir, || which::which("claude").ok(), Arc::new(move |r: &RunRecord| { let _ = tx.lock().unwrap().send(r.clone()); }));
+        let id = m
+            .upsert(JobInput {
+                id: None,
+                name: "Docs digest".into(),
+                folder: docs.display().to_string(),
+                prompt: "List the markdown files in this folder with their size in lines, as a table, and summarise the latest changelog entry in two sentences. Needs attention only if there are no markdown files.".into(),
+                cron: "0 9 * * *".into(),
+                enabled: true,
+                permissions: Permissions { read: true, ..Default::default() },
+                notify: "always".into(),
+                timeout_min: 5,
+                model: None,
+                secrets: vec![SecretInput { name: "CW_DUMMY_SECRET".into(), value: "dummy-secret-value-123".into() }],
+            })
+            .unwrap();
+        m.run_now(&id).unwrap();
+        assert_eq!(rx.recv_timeout(Duration::from_secs(10)).unwrap().status, "running");
+        let done = rx.recv_timeout(Duration::from_secs(320)).unwrap();
+        println!("status={} summary={:?}
+report:
+{}
+error={:?} cost={:?} turns={:?} session={:?}", done.status, done.summary, done.report, done.error, done.cost_usd, done.turns, done.session_id);
+        assert_eq!(done.status, "ok", "{:?}", done.error);
+        assert!(done.report.contains("changelog") || done.report.contains("CHANGELOG") || done.report.contains("|"), "report has the table");
+        assert!(done.session_id.is_some());
+        assert!(!done.report.contains("dummy-secret-value-123"));
+        assert_eq!(m.runs(&id, 5).len(), 1);
+    }
+
     #[test]
     fn manager_saves_jobs_seals_secrets_and_records_runs() {
         let dir = std::env::temp_dir().join(format!("cw-jobs-{}", uuid::Uuid::new_v4().simple()));
