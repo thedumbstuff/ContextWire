@@ -2,8 +2,8 @@
 //! and run the few actions the panel offers (fetch, pull, push, reword).
 //!
 //! Everything goes through the `git` CLI so it honours the user's config,
-//! credentials and hooks. Destructive history edits are refused: only a commit
-//! that is on no remote branch can be reworded, and only the latest one.
+//! credentials and hooks. Destructive history edits are refused: only commits
+//! that are on no remote branch can be reworded.
 
 use std::collections::HashSet;
 use std::io::Write;
@@ -227,32 +227,79 @@ pub fn push(dir: &Path) -> Result<String, String> {
     }
 }
 
-/// Change the message of the latest commit, only if it has not been pushed.
-pub fn reword_head(dir: &Path, hash: &str, message: &str) -> Result<String, String> {
+/// Run git with extra environment and stdin; stdout on success, stderr as the error.
+fn git_with(dir: &Path, args: &[&str], env: &[(&str, &str)], stdin: &str) -> Result<String, String> {
+    let mut cmd = git_cmd(dir);
+    cmd.args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
+    let mut child = cmd.spawn().map_err(|e| format!("git not found: {e}"))?;
+    child.stdin.take().unwrap().write_all(stdin.as_bytes()).map_err(|e| e.to_string())?;
+    let out = child.wait_with_output().map_err(|e| e.to_string())?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+    }
+}
+
+/// Change the message of any commit on the current branch that has not been
+/// pushed yet.
+///
+/// The commit and everything after it are re-created with `git commit-tree`
+/// from their *existing trees*, so file contents, the index and the working
+/// tree are untouched and no conflict is possible; authors and author dates
+/// are preserved. The branch is then moved with `update-ref` (the old history
+/// stays in the reflog). Refused for pushed commits (would need a force-push)
+/// and when the range contains merges.
+pub fn reword(dir: &Path, hash: &str, message: &str) -> Result<String, String> {
     let message = message.trim();
     if message.is_empty() {
         return Err("the commit message is empty".into());
     }
+    let target = git(dir, &["rev-parse", "--verify", &format!("{hash}^{{commit}}")])
+        .map_err(|_| "that commit no longer exists - refresh".to_string())?
+        .trim()
+        .to_string();
     let head = git(dir, &["rev-parse", "HEAD"])?.trim().to_string();
-    if head != hash {
-        return Err("only the latest commit can be reworded here (the repo moved on - refresh)".into());
+    if git(dir, &["merge-base", "--is-ancestor", &target, "HEAD"]).is_err() {
+        return Err("that commit is not on the current branch".into());
     }
-    if !unpushed(dir).contains(&head) {
+    if !unpushed(dir).contains(&target) {
         return Err("this commit is already on a remote; rewording it would need a force-push, so it is not allowed here".into());
     }
-    // --only with no paths amends just the message, never staged changes
-    let mut child = git_cmd(dir)
-        .args(["commit", "--amend", "--only", "--quiet", "-F", "-"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    child.stdin.take().unwrap().write_all(message.as_bytes()).map_err(|e| e.to_string())?;
-    let out = child.wait_with_output().map_err(|e| e.to_string())?;
-    if !out.status.success() {
-        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    // commits to rebuild, oldest first: the target and everything after it
+    let mut chain: Vec<String> = git(dir, &["rev-list", "--reverse", "--topo-order", &format!("{target}..HEAD")])?
+        .lines()
+        .map(str::to_string)
+        .collect();
+    chain.insert(0, target.clone());
+    let merges = git(dir, &["rev-list", "--min-parents=2", &format!("{target}..HEAD")])?;
+    let target_parents = git(dir, &["rev-list", "--parents", "-n1", &target])?;
+    if !merges.trim().is_empty() || target_parents.split_whitespace().count() > 2 {
+        return Err("there is a merge between this commit and HEAD; edit it with an interactive rebase instead".into());
     }
+    let mut parent: Option<String> = target_parents.split_whitespace().nth(1).map(str::to_string);
+
+    for c in &chain {
+        let meta = git(dir, &["log", "-1", "--format=%an%x1f%ae%x1f%ad", "--date=raw", c])?;
+        let f: Vec<&str> = meta.trim_end().splitn(3, '\x1f').collect();
+        let (name, email, date) = (f.first().copied().unwrap_or(""), f.get(1).copied().unwrap_or(""), f.get(2).copied().unwrap_or(""));
+        let msg = if *c == target { message.to_string() } else { git(dir, &["log", "-1", "--format=%B", c])?.trim_end().to_string() };
+        let tree = format!("{c}^{{tree}}");
+        let mut args = vec!["commit-tree", tree.as_str()];
+        if let Some(p) = &parent {
+            args.push("-p");
+            args.push(p.as_str());
+        }
+        let env = [("GIT_AUTHOR_NAME", name), ("GIT_AUTHOR_EMAIL", email), ("GIT_AUTHOR_DATE", date)];
+        let new = git_with(dir, &args, &env, &(msg + "\n"))?.trim().to_string();
+        parent = Some(new);
+    }
+    let new_head = parent.ok_or("nothing to rewrite")?;
+    // compare-and-swap: fails if HEAD moved while we were working
+    git(dir, &["update-ref", "-m", "contextwire: reword commit message", "HEAD", &new_head, &head])?;
     Ok(git(dir, &["rev-parse", "--short", "HEAD"])?.trim().to_string())
 }
 
@@ -333,8 +380,8 @@ mod tests {
 
         // reword: refused for a pushed commit, allowed for the unpushed HEAD, staged work untouched
         run(&a, &["add", "dirty.txt"]);
-        assert!(reword_head(&a, &lg[1].hash, "nope").unwrap_err().contains("latest commit"));
-        reword_head(&a, &lg[0].hash, "second, reworded\n\nwith a body").unwrap();
+        assert!(reword(&a, &lg[1].hash, "nope").unwrap_err().contains("force-push"));
+        reword(&a, &lg[0].hash, "second, reworded\n\nwith a body").unwrap();
         let lg2 = log(&a, 1).unwrap();
         assert_eq!(lg2[0].subject, "second, reworded");
         assert_eq!(lg2[0].body, "with a body");
@@ -346,7 +393,7 @@ mod tests {
         push(&a).unwrap();
         let head = log(&a, 1).unwrap().remove(0);
         assert!(head.pushed);
-        assert!(reword_head(&a, &head.hash, "x").unwrap_err().contains("force-push"));
+        assert!(reword(&a, &head.hash, "x").unwrap_err().contains("force-push"));
 
         // b: fetch shows behind, pull fast-forwards
         fetch(&b).unwrap();
@@ -355,6 +402,47 @@ mod tests {
         let sb = status(&b);
         assert_eq!((sb.ahead, sb.behind), (0, 0));
         assert_eq!(sb.last_commit.unwrap().subject, "second, reworded");
+    }
+
+    #[test]
+    fn reword_an_older_unpushed_commit_keeps_files_authors_and_later_commits() {
+        let (_base, a, _b) = setup();
+        commit(&a, "c1.txt", "c1");
+        commit(&a, "c2.txt", "c2 typo");
+        commit(&a, "c3.txt", "c3");
+        std::fs::write(a.join("staged.txt"), "s").unwrap();
+        run(&a, &["add", "staged.txt"]);
+        let before = log(&a, 4).unwrap();
+        let trees_before: Vec<String> = before.iter().take(3).map(|c| run(&a, &["rev-parse", &format!("{}^{{tree}}", c.hash)])).collect();
+        let author_date = run(&a, &["log", "-1", "--format=%ad", "--date=raw", &before[1].hash]);
+
+        let short = reword(&a, &before[1].hash, "c2 fixed\n\nwith body").unwrap();
+        let after = log(&a, 4).unwrap();
+        assert_eq!(after[0].short, short);
+        assert_eq!(after.iter().map(|c| c.subject.as_str()).collect::<Vec<_>>(), ["c3", "c2 fixed", "c1", "first"]);
+        assert_eq!(after[1].body, "with body");
+        assert_eq!(after[3].hash, before[3].hash, "commits before the target are untouched");
+        let trees_after: Vec<String> = after.iter().take(3).map(|c| run(&a, &["rev-parse", &format!("{}^{{tree}}", c.hash)])).collect();
+        assert_eq!(trees_before, trees_after, "file contents identical");
+        assert_eq!(run(&a, &["log", "-1", "--format=%ad", "--date=raw", &after[1].hash]), author_date, "author date kept");
+        assert_eq!(status(&a).changes, 1, "staged file still staged, not committed");
+        assert!(run(&a, &["reflog", "-1"]).contains("contextwire: reword"));
+        assert_eq!(status(&a).ahead, 3);
+    }
+
+    #[test]
+    fn reword_refuses_across_a_merge_and_unknown_commits() {
+        let (_base, a, _b) = setup();
+        commit(&a, "x.txt", "base unpushed");
+        let target = log(&a, 1).unwrap().remove(0);
+        run(&a, &["checkout", "-q", "-b", "side"]);
+        commit(&a, "side.txt", "side");
+        run(&a, &["checkout", "-q", "main"]);
+        commit(&a, "main.txt", "main");
+        run(&a, &["merge", "-q", "--no-edit", "side"]);
+        assert!(reword(&a, &target.hash, "x").unwrap_err().contains("merge"));
+        assert!(reword(&a, "deadbeef", "x").unwrap_err().contains("no longer exists"));
+        assert!(reword(&a, &target.hash, "   ").unwrap_err().contains("empty"));
     }
 
     #[test]

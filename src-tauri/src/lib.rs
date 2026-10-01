@@ -201,7 +201,7 @@ async fn git_action(path: String, action: String, hash: Option<String>, message:
         "fetch" => gitops::fetch(dir),
         "pull" => gitops::pull(dir),
         "push" => gitops::push(dir),
-        "reword" => gitops::reword_head(dir, hash.as_deref().unwrap_or(""), message.as_deref().unwrap_or("")),
+        "reword" => gitops::reword(dir, hash.as_deref().unwrap_or(""), message.as_deref().unwrap_or("")),
         other => Err(format!("unknown git action {other}")),
     };
     match &res {

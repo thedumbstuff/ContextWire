@@ -223,3 +223,7 @@ textarea { font: 13px var(--mono); color: var(--text); background: var(--bg); bo
 .snip { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
 .snip .role { font: 600 10px var(--sans); text-transform: uppercase; color: var(--faint); margin-right: 6px; }
 mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }
+/* edit button appears on hover, on every commit */
+.commit .edit { visibility: hidden; }
+.commit:hover .edit, .commit .edit:focus-visible { visibility: visible; }
+.commit .edit.locked { color: var(--muted); }

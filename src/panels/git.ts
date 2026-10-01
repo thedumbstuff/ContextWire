@@ -157,7 +157,6 @@ export class GitPanel {
     const dis = busy ? " disabled" : "";
     const note = this.notes.get(r.path);
     const commits = this.commits.get(r.path) ?? [];
-    const headHash = r.last_commit?.hash;
     const bar = `<div class="gitbar">
         <button class="mini" data-act="fetch" data-path="${esc(r.path)}"${dis || (!r.has_remote ? " disabled" : "")}>Fetch</button>
         <button class="mini" data-act="pull" data-path="${esc(r.path)}"${dis || (!r.upstream ? " disabled" : "")} title="Fast-forward only - never merges">Pull${r.behind ? ` ↓${r.behind}` : ""}</button>
@@ -170,16 +169,12 @@ export class GitPanel {
       ? `<div class="gitsess">${inRepo.map((s) => `<span class="chip" data-sid="${esc(s.id)}" title="${esc(s.cwd)}"><span class="dot st-${s.status}"></span>${esc(s.name || s.autoTitle || "session")}</span>`).join("")}</div>`
       : "";
     const rows = commits.length
-      ? commits.map((c) => {
-          const canReword = c.hash === headHash && !c.pushed;
-          return `<div class="commit${c.pushed ? "" : " local"}" title="${esc(c.hash)}\n${esc(c.author)}${c.body ? "\n\n" + esc(c.body) : ""}">
+      ? commits.map((c) => `<div class="commit${c.pushed ? "" : " local"}" title="${esc(c.hash)}\n${esc(c.author)}${c.body ? "\n\n" + esc(c.body) : ""}">
               <span class="hash">${esc(c.short)}</span>
               <div class="txt"><div class="t">${esc(c.subject)}</div><div class="sub">${esc(c.author)} · ${ago(c.time_ms, now)}${c.pushed ? "" : " · not pushed"}</div></div>
-              ${canReword
-                ? `<button class="mini" data-act="reword" data-path="${esc(r.path)}" data-hash="${esc(c.hash)}" title="Edit this commit message">Edit</button>`
-                : c.hash === headHash ? `<span class="muted small" title="Already pushed - editing would need a force-push">pushed</span>` : ""}
-            </div>`;
-        }).join("")
+              <button class="mini edit${c.pushed ? " locked" : ""}" data-act="reword" data-path="${esc(r.path)}" data-hash="${esc(c.hash)}"
+                title="${c.pushed ? "Already pushed - view the message (editing would need a force-push)" : "Edit this commit message"}">${c.pushed ? "View" : "Edit"}</button>
+            </div>`).join("")
       : `<div class="none small">loading commits…</div>`;
     return `<div class="repodetail">${bar}${msg}${sess}<div class="commits">${rows}</div></div>`;
   }
@@ -210,9 +205,16 @@ export class GitPanel {
     if (action === "reword") {
       const c = (this.commits.get(path) ?? []).find((x) => x.hash === hash);
       if (!c) return;
-      this.rewordTarget = { repo: path, commit: c };
-      ($("rewordText") as HTMLTextAreaElement).value = c.body ? `${c.subject}\n\n${c.body}` : c.subject;
-      $("rewordInfo").textContent = `${r.name} · ${c.short} · not pushed yet, so it is safe to change`;
+      this.rewordTarget = c.pushed ? null : { repo: path, commit: c };
+      const text = $("rewordText") as HTMLTextAreaElement;
+      text.value = c.body ? `${c.subject}\n\n${c.body}` : c.subject;
+      text.readOnly = c.pushed;
+      $("rewordGo").classList.toggle("hidden", c.pushed);
+      const later = (this.commits.get(path) ?? []).findIndex((x) => x.hash === c.hash);
+      $("rewordInfo").textContent = c.pushed
+        ? `${r.name} · ${c.short} · already pushed. Changing it would rewrite history others may have pulled and needs a force-push, so ContextWire only shows it.`
+        : `${r.name} · ${c.short} · not pushed yet, safe to change.` +
+          (later > 0 ? ` The ${later} newer commit${later > 1 ? "s" : ""} get new ids; their files do not change.` : "");
       $("rewordErr").textContent = "";
       ($("dlgReword") as HTMLDialogElement).showModal();
       return;
