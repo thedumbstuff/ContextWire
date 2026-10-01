@@ -7,6 +7,7 @@ pub mod gitlog;
 pub mod gitops;
 pub mod hook;
 pub mod hookserver;
+pub mod jobs;
 pub mod pty;
 pub mod roadmaps;
 pub mod search;

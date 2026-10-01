@@ -16,7 +16,7 @@ use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, Pt
 /// from one - then the child even stops saving its transcript). They must
 /// not leak into the consoles we host. User config such as
 /// CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS is deliberately kept.
-const STRIP_ENV: &[&str] = &[
+pub const STRIP_ENV: &[&str] = &[
     "CLAUDECODE",
     "CLAUDE_CODE_CHILD_SESSION",
     "CLAUDE_CODE_ENTRYPOINT",
