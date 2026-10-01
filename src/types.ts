@@ -47,6 +47,7 @@ export interface AppInfo {
   user_settings: string;
   startup_error: string | null;
   autostart_managed: boolean;
+  log_file: string;
 }
 
 export interface Persisted {

@@ -173,6 +173,7 @@ async function start(s: Session, mode: "new" | "resume", extra: string[] = []) {
   } catch (e) {
     s.status = "exited";
     h.notice(`could not start claude: ${e}`);
+    uiLog("warn", `start ${s.id.slice(0, 8)} failed: ${e}`);
   }
   render();
   save();
@@ -220,6 +221,7 @@ function onHook(ev: HookEvent) {
     sessions.set(id, s);
   }
   const t = applyHook(s, ev, isVisible(s.id));
+  if (t.status && t.status !== s.status) uiLog("info", `status ${s.id.slice(0, 8)} ${s.status} -> ${t.status} (${ev.hook_event_name})${t.notify ? ` notify=${t.notify}` : ""}`);
   if (t.status) s.status = t.status;
   if (t.msg !== undefined) s.lastMsg = t.msg;
   if (t.prompt && !s.autoTitle) s.autoTitle = t.prompt;
@@ -412,7 +414,8 @@ async function openSettings() {
   auto.checked = info.autostart_managed ? await autostartIsOn().catch(() => false) : false;
   if (!info.autostart_managed) auto.parentElement!.title = "Only available in the installed (release) build";
   renderRoots();
-  $("setInfo").innerHTML = `v${esc(info.version)} · claude: ${esc(info.claude ?? "NOT FOUND")} · hook port ${esc(info.hook_port ?? "-")}<br>data: ${esc(info.data_dir)}`;
+  $("setInfo").innerHTML = `v${esc(info.version)} · claude: ${esc(info.claude ?? "NOT FOUND")} · hook port ${esc(info.hook_port ?? "-")}<br>data: ${esc(info.data_dir)}<br>log: ${esc(info.log_file)}`;
+  $("setDiag").textContent = "Copy diagnostics";
   ($("dlgSettings") as HTMLDialogElement).showModal();
 }
 
@@ -420,6 +423,21 @@ function renderRoots() {
   $("setRoots").innerHTML = roots.length
     ? roots.map((r, i) => `<div class="rootrow"><span title="${esc(r)}">${esc(r)}</span><button type="button" data-rmroot="${i}">Remove</button></div>`).join("")
     : `<div class="muted small">No workspaces yet.</div>`;
+}
+
+/** Rust facts + log tail, plus a session summary: status and folder only -
+ *  no prompts, titles or messages, so it is safe to paste anywhere. */
+async function diagnosticsText(): Promise<string> {
+  const base: string = await invoke("diagnostics");
+  const rows = [...sessions.values()].map((s) =>
+    `${s.id.slice(0, 8)}  ${s.status.padEnd(9)} unread=${s.unread} running=${s.running} external=${s.external} transcript=${s.hasTranscript}  ${s.cwd}`);
+  return [
+    base,
+    "",
+    `---- sessions in the sidebar (${rows.length}) ----`,
+    ...rows,
+    `workspaces: ${roots.length} · past sessions known: ${past.length} · window focused: ${document.hasFocus()}`,
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------- startup
@@ -564,6 +582,16 @@ function bindUi() {
     renderRoots(); render(); save();
     $("setFindRoots").textContent = added.length ? `Added ${added.length}` : "Nothing new found";
   };
+  $("setDiag").onclick = async () => {
+    const btn = $("setDiag");
+    try {
+      await navigator.clipboard.writeText(await diagnosticsText());
+      btn.textContent = "Copied - paste it to Claude";
+    } catch (e) {
+      btn.textContent = `Copy failed: ${e}`;
+    }
+  };
+  $("setLogs").onclick = () => { invoke("open_logs").catch((e) => uiLog("warn", `open logs: ${e}`)); };
   $("setRoots").onclick = (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-rmroot]");
     if (b) { roots.splice(Number(b.dataset.rmroot), 1); renderRoots(); render(); save(); }
