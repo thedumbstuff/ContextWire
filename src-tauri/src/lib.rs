@@ -1,3 +1,5 @@
+#[macro_use]
+pub mod applog;
 pub mod claudecfg;
 pub mod hook;
 pub mod hookserver;
@@ -35,6 +37,7 @@ struct AppInfo {
     user_settings: String,
     startup_error: Option<String>,
     autostart_managed: bool,
+    log_file: String,
 }
 
 fn exe_path() -> PathBuf {
@@ -75,6 +78,7 @@ fn app_info(state: State<AppState>) -> AppInfo {
         user_settings: us.display().to_string(),
         startup_error: state.startup_error.clone(),
         autostart_managed: !cfg!(debug_assertions),
+        log_file: applog::log_path(&state.data_dir).display().to_string(),
     }
 }
 
@@ -102,16 +106,41 @@ fn session_spawn(
     let env = vec![("CONTEXTWIRE_TAB".to_string(), id.clone())];
     let out_app = app.clone();
     let exit_app = app.clone();
-    state.pty.spawn(
+    info!("spawn {} cwd={} args={:?} size={}x{}", short(&id), cwd, args, cols, rows);
+    let res = state.pty.spawn(
         pty::SpawnSpec { id: &id, program: &claude, args: &args, cwd: Path::new(&cwd), env: &env, cols, rows },
         Arc::new(move |id, bytes| {
             let data = base64::engine::general_purpose::STANDARD.encode(bytes);
             let _ = out_app.emit("pty-output", json!({"id": id, "data": data}));
         }),
         Arc::new(move |id, code| {
+            info!("exit  {} code={:?}", short(id), code);
             let _ = exit_app.emit("pty-exit", json!({"id": id, "code": code}));
         }),
-    )
+    );
+    if let Err(e) = &res {
+        warn!("spawn {} failed: {e}", short(&id));
+    }
+    res
+}
+
+fn short(id: &str) -> &str {
+    &id[..id.len().min(8)]
+}
+
+/// One log line per hook event: event, session, folder and the non-conversation
+/// details (tool name, notification type/message). Prompts are never logged.
+fn log_hook(v: &Value) {
+    let s = |k: &str| v[k].as_str().unwrap_or("");
+    let sid = if s("cw_tab").is_empty() { s("session_id") } else { s("cw_tab") };
+    let mut extra = String::new();
+    for k in ["tool_name", "notification_type", "message", "source", "reason"] {
+        if !s(k).is_empty() {
+            extra.push_str(&format!(" {k}={:?}", s(k).chars().take(120).collect::<String>()));
+        }
+    }
+    let origin = if s("cw_tab").is_empty() { " (external)" } else { "" };
+    info!("hook  {:<16} {}{} cwd={}{}", s("hook_event_name"), short(sid), origin, s("cwd"), extra);
 }
 
 #[tauri::command]
@@ -193,7 +222,9 @@ fn store_save(state: State<AppState>, value: Value) -> Result<(), String> {
 #[tauri::command]
 fn global_hooks_set(enable: bool) -> Result<bool, String> {
     let p = claudecfg::user_settings_path();
-    claudecfg::set_global(&p, &claudecfg::hook_command(&exe_path()), enable)?;
+    let r = claudecfg::set_global(&p, &claudecfg::hook_command(&exe_path()), enable);
+    info!("global hooks {} -> {:?}", if enable { "install" } else { "remove" }, r);
+    r?;
     Ok(claudecfg::global_installed(&p))
 }
 
@@ -220,14 +251,43 @@ fn tray_status(app: AppHandle, tooltip: String) {
     }
 }
 
-/// Frontend log line -> stderr (visible in `tauri dev` output).
+/// Frontend log line (UI errors, status changes) -> the log file.
 #[tauri::command]
 fn ui_log(level: String, msg: String) {
-    eprintln!("[ui {level}] {msg}");
+    applog::write(&level.to_uppercase(), &format!("ui    {msg}"));
+}
+
+/// Everything needed to look into a problem, as text for the clipboard:
+/// app/environment facts, running consoles and the last log lines.
+/// The UI appends a session summary (status/folder only, no conversation).
+#[tauri::command]
+fn diagnostics(state: State<AppState>) -> String {
+    let us = claudecfg::user_settings_path();
+    let mut out = vec![
+        format!("ContextWire {} ({})", env!("CARGO_PKG_VERSION"), if cfg!(debug_assertions) { "debug" } else { "release" }),
+        format!("exe: {}", exe_path().display()),
+        format!("claude: {}", find_claude().map_or("NOT FOUND".into(), |p| p.display().to_string())),
+        format!("hook endpoint: {}", state.endpoint.as_ref().map_or("NOT RUNNING".into(), |e| format!("127.0.0.1:{}", e.port))),
+        format!("session hooks file: {}", state.session_settings.as_ref().map_or("MISSING".into(), |p| p.display().to_string())),
+        format!("global hooks installed: {}", claudecfg::global_installed(&us)),
+        format!("startup error: {}", state.startup_error.as_deref().unwrap_or("none")),
+        format!("running consoles: {:?}", state.pty.running().iter().map(|i| short(i).to_string()).collect::<Vec<_>>()),
+        String::new(),
+        "---- last 200 log lines ----".into(),
+    ];
+    out.extend(applog::tail(200));
+    out.join("\n")
+}
+
+#[tauri::command]
+fn open_logs(state: State<AppState>) -> Result<(), String> {
+    let dir = applog::log_path(&state.data_dir).parent().unwrap().to_path_buf();
+    std::process::Command::new("explorer.exe").arg(&dir).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn quit_app(app: AppHandle, state: State<AppState>) {
+    info!("quit (ui)");
     state.pty.kill_all();
     app.exit(0);
 }
@@ -245,6 +305,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, ev| match ev.id().as_ref() {
             "show" => show_main(app),
             "quit" => {
+                info!("quit (tray)");
                 app.state::<AppState>().pty.kill_all();
                 app.exit(0);
             }
@@ -275,18 +336,33 @@ pub fn run() {
             let handle = app.handle().clone();
             let data_dir = hookserver::endpoint_file().parent().map(Path::to_path_buf).unwrap_or_else(std::env::temp_dir);
             let _ = std::fs::create_dir_all(&data_dir);
+            let log_err = applog::init(&data_dir).err();
+            info!(
+                "start ContextWire {} exe={} claude={:?} minimized={minimized}",
+                env!("CARGO_PKG_VERSION"),
+                exe_path().display(),
+                find_claude()
+            );
 
             let mut errors = Vec::new();
+            if let Some(e) = log_err {
+                errors.push(format!("log file: {e}"));
+            }
             let session_settings = claudecfg::write_session_settings(&data_dir, &exe_path())
                 .map_err(|e| errors.push(format!("session hooks: {e}")))
                 .ok();
             let ev_app = handle.clone();
             let endpoint = hookserver::start(&hookserver::endpoint_file(), move |v| {
+                log_hook(&v);
                 let _ = ev_app.emit("hook-event", v);
             })
             .map_err(|e| errors.push(format!("hook server: {e}")))
             .ok();
 
+            match &endpoint {
+                Some(e) => info!("hook endpoint 127.0.0.1:{}", e.port),
+                None => warn!("hook endpoint failed: {errors:?}"),
+            }
             app.manage(AppState {
                 pty: pty::PtyManager::default(),
                 data_dir,
@@ -339,7 +415,9 @@ pub fn run() {
             window_focused,
             tray_status,
             quit_app,
-            ui_log
+            ui_log,
+            diagnostics,
+            open_logs
         ])
         .run(tauri::generate_context!())
         .expect("error while running ContextWire");
