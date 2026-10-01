@@ -16,7 +16,7 @@ export interface ActivityItem {
 const MAX = 500;
 const GIT_ICON = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11.2 6.6"/></svg>`;
 const ICON: Record<string, string> = {
-  done: "✓", needs: "!", start: "▶", end: "■", exit: "■", git: GIT_ICON, "git-error": "✕",
+  done: "✓", needs: "!", start: "▶", end: "■", exit: "■", git: GIT_ICON, "git-error": "✕", "job-ok": "⏱", "job-attention": "!", "job-error": "✕",
 };
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -71,7 +71,7 @@ export class ActivityPanel {
   }
 
   private badge() {
-    this.onUnseen(this.items.filter((i) => i.t > this.seenAt && (i.kind === "needs" || i.kind === "done" || i.kind === "git-error")).length);
+    this.onUnseen(this.items.filter((i) => i.t > this.seenAt && ["needs", "done", "git-error", "job-attention", "job-error"].includes(i.kind)).length);
   }
 
   private persist() {

@@ -317,3 +317,53 @@ mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }
 .drow mark { background: #ffffff26; color: inherit; border-radius: 2px; }
 .drow.gap { color: var(--faint); background: var(--panel); text-align: center; }
 .drow.cur { outline: 1px solid #4c9aff66; }
+
+/* ---- scheduled jobs ---- */
+.job { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; }
+.job:hover { background: var(--panel); }
+.job.off { opacity: .55; }
+.job .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job .sub { color: var(--faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job .sub.last { color: var(--muted); }
+.job .jact { display: flex; gap: 4px; visibility: hidden; }
+.job:hover .jact { visibility: visible; }
+.jdot { width: 9px; height: 9px; border-radius: 50%; background: var(--st-idle); }
+.jdot.st-ok { background: var(--st-done); } .jdot.st-attention { background: var(--st-working); }
+.jdot.st-error, .jdot.st-timeout { background: var(--st-needs); }
+.jdot.st-running { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.jobview { flex: 1; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); outline: none; }
+.jr-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 0; }
+.jr-runs { border-right: 1px solid var(--line); overflow: auto; padding: 6px; }
+.jrun { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.jrun:hover { background: var(--panel); } .jrun.sel { background: #1f3a5f; }
+.jrun .t { font-size: 12px; } .jrun .sub { color: var(--faint); font-size: 11px; }
+.jr-report { overflow: auto; padding: 16px 22px 30px; }
+.jsum { padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; background: var(--panel); border-left: 3px solid var(--st-done); }
+.jsum.st-attention { border-left-color: var(--st-working); } .jsum.st-error, .jsum.st-timeout { border-left-color: var(--st-needs); }
+.jerr { background: #2a1719; color: #f3a3a1; padding: 8px; border-radius: 6px; white-space: pre-wrap; font: 12px var(--mono); }
+.jmeta { margin-top: 18px; }
+.md { font-size: 13.5px; line-height: 1.55; max-width: 900px; }
+.md h2, .md h3, .md h4, .md h5 { margin: 16px 0 6px; }
+.md h2 { font-size: 18px; } .md h3 { font-size: 16px; } .md h4 { font-size: 14px; }
+.md table { border-collapse: collapse; margin: 8px 0; font-size: 12.5px; }
+.md th, .md td { border: 1px solid var(--line); padding: 4px 10px; text-align: left; }
+.md td.n { text-align: right; font-family: var(--mono); }
+.md th { background: var(--panel); }
+.md code { font-family: var(--mono); background: var(--panel); padding: 0 4px; border-radius: 3px; }
+.md pre { background: var(--panel); padding: 10px; border-radius: 6px; overflow: auto; }
+.md a { color: var(--accent); }
+.mdchart { margin: 10px 0; padding: 8px; background: var(--panel); border-radius: 8px; max-width: 700px; }
+.chart { width: 100%; height: auto; }
+.chart .cg { stroke: var(--line); } .chart .cy, .chart .cx { fill: var(--faint); font: 10px var(--sans); }
+.chart .cy { text-anchor: end; } .chart .cx { text-anchor: middle; }
+.chart .ct { fill: var(--text); font: 600 12px var(--sans); } .chart .cl { fill: var(--muted); font: 11px var(--sans); }
+dialog:has(#jobName) { width: min(860px, calc(100vw - 32px)); }
+.jgrid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; }
+.jfs { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px 10px; display: grid; gap: 6px; }
+.jfs legend { color: var(--muted); font-size: 12px; padding: 0 4px; }
+.row.wrap { flex-wrap: wrap; }
+.row.wrap > label { display: grid; gap: 4px; }
+.perm-granular { display: grid; gap: 4px; }
+.secrow { display: grid; grid-template-columns: 1fr 1.3fr auto; gap: 6px; margin-bottom: 4px; }
+.secrow input { font-family: var(--mono); font-size: 12px; }
+button.danger { color: #f3a3a1; border-color: #5a2a2d; }

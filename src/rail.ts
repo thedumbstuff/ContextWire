@@ -1,7 +1,7 @@
 // PyCharm-style tool-window rail: icon tabs on the far left switch the panel;
 // clicking the open tab again hides the panel. Alt+1..6 do the same.
 
-export type PanelId = "active" | "all" | "git" | "roadmaps" | "activity" | "search";
+export type PanelId = "active" | "all" | "git" | "roadmaps" | "activity" | "jobs" | "search";
 
 const svg = (body: string) =>
   `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
@@ -12,6 +12,7 @@ export const PANELS: { id: PanelId; label: string; icon: string }[] = [
   { id: "git", label: "Git", icon: svg('<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11.2 6.6"/>') },
   { id: "roadmaps", label: "Roadmaps", icon: svg('<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>') },
   { id: "activity", label: "Activity", icon: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>') },
+  { id: "jobs", label: "Jobs", icon: svg('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/>') },
   { id: "search", label: "Search", icon: svg('<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>') },
 ];
 

@@ -58,7 +58,7 @@ export interface Persisted {
   sessions: Session[];
   activeId: string | null;
   settings: Settings;
-  ui?: { panel: "active" | "all" | "git" | "roadmaps" | "activity" | "search"; collapsed: boolean; width: number; gitNewestFirst?: boolean };
+  ui?: { panel: "active" | "all" | "git" | "roadmaps" | "activity" | "jobs" | "search"; collapsed: boolean; width: number; gitNewestFirst?: boolean };
 }
 
 /** Payload Claude Code hands to a hook, plus `cw_tab` added by our client. */

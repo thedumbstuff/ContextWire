@@ -13,6 +13,8 @@ import { RoadmapsPanel } from "./panels/roadmaps";
 import { ActivityPanel } from "./panels/activity";
 import { SearchPanel, type SessionHits } from "./panels/search";
 import { GitView } from "./gitview/view";
+import { JobsPanel, STATUS_TEXT, type RunRecord } from "./jobs/panel";
+import { JobReport } from "./jobs/report";
 import { ago, applyHook, basename, firstLine, relativeTo, rootFor, sessionRank, topLevel } from "./status";
 
 // ---------------------------------------------------------------- state
@@ -43,6 +45,9 @@ let roadmapsPanel: RoadmapsPanel;
 let activity: ActivityPanel;
 let searchPanel: SearchPanel;
 let gitView: GitView;
+let jobsPanel: JobsPanel;
+let jobReport: JobReport;
+let jobSessionIds = new Set<string>(); // transcripts of job runs - not shown as sessions
 
 function newSession(id: string, cwd: string, patch: Partial<Session> = {}): Session {
   const now = Date.now();
@@ -112,7 +117,72 @@ function render() {
 // ---------------------------------------------------------------- tool windows
 
 function panelOf(id: PanelId): { actions(): string; onAction(a: string): boolean } | null {
-  return id === "git" ? git : id === "roadmaps" ? roadmapsPanel : id === "activity" ? activity : null;
+  return id === "git" ? git : id === "roadmaps" ? roadmapsPanel : id === "activity" ? activity : id === "jobs" ? jobsPanel : null;
+}
+
+// ---------------------------------------------------------------- scheduled jobs
+
+function openJobReport(jobId: string, runId?: string) {
+  if (gitView.isOpen) gitView.hide();
+  void jobReport.open(jobId, runId);
+  renderBar();
+  ($("jobview") as HTMLElement).focus();
+}
+
+function closeJobReport() {
+  jobReport.hide();
+  renderBar();
+  if (activeId) hosts.get(activeId)?.show();
+}
+
+function jobBadge() {
+  const n = jobsPanel.attentionCount();
+  const running = jobsPanel.jobs.filter((j) => j.running).length;
+  if (n) rail.badge("jobs", String(n), "needs");
+  else rail.badge("jobs", running ? String(running) : "", "info");
+}
+
+async function refreshJobSessions() {
+  try {
+    jobSessionIds = new Set(await invoke<string[]>("job_session_ids"));
+  } catch {
+    /* jobs not available */
+  }
+}
+
+function onJobRun(r: RunRecord) {
+  void jobsPanel.load().then(() => {
+    jobBadge();
+    if (jobReport.isOpen && jobReport.currentJob === r.job_id) void jobReport.refresh(r.status === "running" ? undefined : r.id);
+  });
+  if (r.status === "running") return;
+  const job = jobsPanel.jobs.find((j) => j.id === r.job_id);
+  const bad = r.status !== "ok";
+  activity.add(bad ? (r.status === "attention" ? "job-attention" : "job-error") : "job-ok",
+    `${r.job_name}: ${STATUS_TEXT[r.status] ?? r.status}${r.summary ? " - " + r.summary : ""}`, job?.folder ?? "", undefined);
+  if (r.session_id) {
+    jobSessionIds.add(r.session_id);
+    refreshPastSoon();
+  }
+  const notifyRule = job?.notify ?? "always";
+  if (notifyRule === "never" || (notifyRule === "attention" && !bad)) return;
+  const title = `${bad ? "⚠" : "⏱"} ${r.job_name}: ${STATUS_TEXT[r.status] ?? r.status}`;
+  invoke("toast", { title, body: r.summary || "Open the report in ContextWire", session: `job:${r.job_id}` }).catch(() => {
+    if (notifyOk) sendNotification({ title, body: r.summary });
+  });
+  if (bad) invoke("attention", { critical: true }).catch(() => {});
+}
+
+/** Resume a job run's conversation as a normal session to dig deeper. */
+function continueJobSession(run: RunRecord, folder: string) {
+  if (!run.session_id) return;
+  jobSessionIds.delete(run.session_id); // it becomes a normal session now
+  if (!sessions.has(run.session_id)) {
+    sessions.set(run.session_id, newSession(run.session_id, folder, {
+      name: `${run.job_name} (job run)`, status: "suspended", hasTranscript: true, lastEvent: Date.now(),
+    }));
+  }
+  select(run.session_id);
 }
 
 function onPanelChange(st: RailState, opened: PanelId | null) {
@@ -122,6 +192,7 @@ function onPanelChange(st: RailState, opened: PanelId | null) {
   if (opened === "roadmaps") void roadmapsPanel.load();
   if (opened === "activity") { activity.markSeen(); activity.render(); }
   if (opened === "search") { searchPanel.render(); searchPanel.focus(); }
+  if (opened === "jobs") void jobsPanel.load().then(jobBadge);
   if (opened === "active" || opened === "all") render();
   save();
 }
@@ -149,6 +220,26 @@ function setupPanels() {
     if (git) onPanelChange(st, opened);
   });
   gitView = new GitView({ onClose: closeLog, log: uiLog });
+  jobsPanel = new JobsPanel({
+    openReport: (id) => openJobReport(id),
+    log: uiLog,
+    pickFolder: async () => {
+      const f = await openDialog({ directory: true, title: "Folder the agent works in" });
+      return typeof f === "string" ? f : null;
+    },
+    defaultFolder: () => recentRoot() ?? roots[0] ?? "",
+    onChanged: () => {
+      jobBadge();
+      if (jobReport.isOpen) void jobReport.refresh();
+    },
+  });
+  jobReport = new JobReport({
+    onClose: closeJobReport,
+    edit: (job) => jobsPanel.openEditor(job),
+    continueSession: continueJobSession,
+    jobs: () => jobsPanel.jobs,
+    log: uiLog,
+  });
   git = new GitPanel({
     openLog,
     roots: () => roots,
@@ -205,7 +296,7 @@ function renderSummary() {
 
 function renderBar() {
   const s = activeId ? sessions.get(activeId) : undefined;
-  const gv = !!gitView?.isOpen;
+  const gv = !!gitView?.isOpen || !!jobReport?.isOpen;
   $("terms").classList.toggle("hidden", gv);
   $("bar").classList.toggle("hidden", !s || gv);
   $("empty").classList.toggle("hidden", !!s);
@@ -268,6 +359,7 @@ function closeLog() {
 }
 
 function select(id: string | null) {
+  if (jobReport?.isOpen) jobReport.hide();
   if (gitView?.isOpen) {
     gitView.hide();
     panelBeforeLog = null;
@@ -471,8 +563,11 @@ async function wireEvents() {
   });
   // errors inside event callbacks are swallowed by the event system - log them
   await listen<{ id: string | null }>("toast-clicked", (e) => {
-    if (e.payload.id && sessions.has(e.payload.id)) select(e.payload.id);
+    const id = e.payload.id;
+    if (id?.startsWith("job:")) openJobReport(id.slice(4));
+    else if (id && sessions.has(id)) select(id);
   });
+  await listen<RunRecord>("job-run", (e) => onJobRun(e.payload));
   await listen<HookEvent>("hook-event", (e) => {
     try {
       onHook(e.payload);
@@ -574,7 +669,8 @@ async function refreshPast() {
   if (pastBusy) return;
   pastBusy = true;
   try {
-    past = await invoke("past_sessions", { limit: 400 });
+    const all: PastSession[] = await invoke("past_sessions", { limit: 400 });
+    past = all.filter((p) => !jobSessionIds.has(p.id)); // job runs live in the Jobs panel
     render();
   } catch (e) {
     uiLog("error", `past sessions: ${e}`);
@@ -877,7 +973,9 @@ async function main() {
   bindUi();
   await activity.load();
   await seedRoots();
+  await refreshJobSessions();
   await refreshPast(); // select() below needs transcript times for the open-elsewhere check
+  void jobsPanel.load().then(jobBadge);
   // the panel remembered from last time is open but was never "opened" - load it now
   // that the workspaces are known (otherwise Git said "no repos found")
   if (!rail.state.collapsed) onPanelChange(rail.state, rail.state.panel);

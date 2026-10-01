@@ -31,6 +31,7 @@
         </section>
         <section class="pane" id="pane-roadmaps"><div class="groups" id="roadmapList"></div></section>
         <section class="pane" id="pane-activity"><div class="groups" id="activityList"></div></section>
+        <section class="pane" id="pane-jobs"><div class="groups" id="jobList"></div></section>
         <section class="pane" id="pane-search">
           <input id="tsearch" type="search" placeholder="Search every conversation (2+ letters)" autocomplete="off" />
           <div class="groups" id="searchList"></div>
@@ -55,6 +56,7 @@
         </header>
         <div class="banner hidden" id="banner"></div>
         <section class="gitview hidden" id="gitview" tabindex="-1"></section>
+        <section class="jobview hidden" id="jobview" tabindex="-1"></section>
         <div class="terms" id="terms">
           <div class="empty" id="empty">
             <div class="big">◆</div>
@@ -118,13 +120,79 @@
           <span><kbd>Ctrl+Shift+N</kbd> new session</span>
           <span><kbd>Ctrl+Shift+F</kbd> search conversations</span>
           <span><kbd>Ctrl+Shift+H</kbd> history</span>
-          <span><kbd>Alt+1…6</kbd> switch panel (again = hide it)</span>
+          <span><kbd>Alt+1…7</kbd> switch panel (again = hide it)</span>
           <span><kbd>Ctrl+C</kbd> with a selection copies · <kbd>Ctrl+V</kbd> pastes</span>
         </div>
         <h4>Troubleshooting</h4>
         <div class="row"><button type="button" id="setDiag">Copy diagnostics</button><button type="button" id="setLogs">Open logs folder</button></div>
         <p class="muted small" id="setInfo"></p>
         <div class="actions"><button class="primary" value="ok">Done</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="dlgJob">
+      <form method="dialog" class="dlg wide" onsubmit="return false">
+        <h3 id="jobTitle">New scheduled job</h3>
+        <div class="jgrid">
+          <label>Name <input id="jobName" autocomplete="off" placeholder="e.g. Website views" /></label>
+          <label>Folder the agent works in
+            <div class="row"><input id="jobFolder" spellcheck="false" autocomplete="off" /><button type="button" id="jobBrowse">Browse…</button></div>
+          </label>
+        </div>
+        <label>Instruction <span class="muted small">(what the agent should do each time - it runs unattended and cannot ask you questions)</span>
+          <textarea id="jobPrompt" rows="6" spellcheck="true"></textarea>
+        </label>
+        <fieldset class="jfs">
+          <legend>Schedule</legend>
+          <div class="row wrap">
+            <select id="jobPreset">
+              <option value="hourly">Every hour</option><option value="minutes">Every N minutes</option>
+              <option value="daily">Every day</option><option value="weekdays">Weekdays (Mon-Fri)</option>
+              <option value="weekly">Every week</option><option value="monthly">Every month</option>
+              <option value="custom">Custom (cron)</option>
+            </select>
+            <span id="jobDayWrap">on <select id="jobDay"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="0">Sunday</option></select></span>
+            <span id="jobDomWrap">on day <input id="jobDom" type="number" min="1" max="28" value="1" style="width:64px" /></span>
+            <span id="jobEveryWrap">every <input id="jobEvery" type="number" min="1" max="59" value="15" style="width:64px" /> min</span>
+            <span id="jobTimeWrap">at <input id="jobTime" type="time" value="09:00" style="width:110px" /></span>
+            <input id="jobCron" spellcheck="false" autocomplete="off" style="width:150px" title="cron: minute hour day month weekday" />
+          </div>
+          <div class="muted small" id="jobPreview"></div>
+          <div class="muted small">Runs while ContextWire is running; a run missed while the PC was off runs once when ContextWire starts.</div>
+        </fieldset>
+        <fieldset class="jfs perm">
+          <legend>What may the agent do? <span class="muted small">(nothing is allowed unless you tick it)</span></legend>
+          <div class="perm-granular">
+            <label class="check"><input type="checkbox" id="permRead" /> Read files in the folder</label>
+            <label class="check"><input type="checkbox" id="permSearch" /> Search the web</label>
+            <label class="check"><input type="checkbox" id="permFetch" /> Fetch web pages</label>
+            <label class="check"><input type="checkbox" id="permEdit" /> Create and edit files</label>
+            <label class="check"><input type="checkbox" id="permCmd" /> Run these commands only (one pattern per line, e.g. <code>curl *</code>)</label>
+            <textarea id="permCmds" rows="2" spellcheck="false" placeholder="curl *"></textarea>
+          </div>
+          <label class="check"><input type="checkbox" id="permAuto" /> Full auto - allow everything (edits, any command)</label>
+          <div class="err small hidden" id="permAutoWarn">Unattended full auto can change files and run any command without you watching. Prefer the specific options above.</div>
+          <div class="muted small" id="permSummary"></div>
+        </fieldset>
+        <fieldset class="jfs">
+          <legend>Secrets <span class="muted small">(encrypted for your Windows account; given to the agent as environment variables, never shown)</span></legend>
+          <div id="jobSecrets"></div>
+          <button type="button" class="mini" id="jobAddSecret">＋ Add secret</button>
+        </fieldset>
+        <div class="row wrap">
+          <label>Notify me <select id="jobNotify"><option value="always">after every run</option><option value="attention">only when it needs attention or fails</option><option value="never">never (just keep the report)</option></select></label>
+          <label>Timeout (min) <input id="jobTimeout" type="number" min="1" max="240" value="10" style="width:80px" /></label>
+          <label>Model <input id="jobModel" placeholder="default" style="width:120px" autocomplete="off" title="optional, e.g. sonnet or opus" /></label>
+          <label class="check" style="align-self:end"><input type="checkbox" id="jobEnabled" checked /> Enabled</label>
+        </div>
+        <div class="err" id="jobErr"></div>
+        <div class="actions">
+          <button type="button" class="danger" id="jobDelete">Delete job</button>
+          <span class="spacer"></span>
+          <button type="button" data-close>Cancel</button>
+          <button type="button" id="jobSave">Save</button>
+          <button type="button" class="primary" id="jobSaveRun">Save &amp; run now</button>
+        </div>
       </form>
     </dialog>
 
