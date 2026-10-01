@@ -8,7 +8,7 @@ export interface Transition {
   status?: Status;
   unread: boolean; // bump the unread counter
   notify: "needs" | "done" | null;
-  msg?: string; // last activity line for the sidebar
+  msg?: string; // last activity line for the sidebar ("" clears it)
   prompt?: string; // the user's prompt (for the auto title)
   hasTranscript?: boolean;
 }
@@ -28,7 +28,7 @@ export function applyHook(s: Pick<Session, "status">, ev: HookEvent, visible: bo
   const none: Transition = { unread: false, notify: null };
   switch (ev.hook_event_name) {
     case "SessionStart":
-      return ["starting", "exited", "suspended"].includes(s.status) ? { ...none, status: "idle" } : none;
+      return ["starting", "exited", "suspended"].includes(s.status) ? { ...none, status: "idle", msg: "" } : none;
 
     case "UserPromptSubmit":
       return { ...none, status: "working", prompt: firstLine(ev.prompt), msg: "you: " + firstLine(ev.prompt), hasTranscript: true };

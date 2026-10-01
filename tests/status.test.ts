@@ -43,7 +43,8 @@ test("idle 'waiting for your input' nudge after a finished turn is not news", ()
 
 test("SessionStart does not reset a busy session (e.g. after /clear)", () => {
   assert.equal(applyHook({ status: "working" }, ev("SessionStart"), false).status, undefined);
-  assert.equal(applyHook({ status: "suspended" }, ev("SessionStart"), false).status, "idle");
+  const r = applyHook({ status: "suspended" }, ev("SessionStart"), false);
+  assert.deepEqual([r.status, r.msg], ["idle", ""], "a fresh start clears the stale activity line");
 });
 
 test("rootFor picks the longest containing root, case/slash-insensitive", () => {

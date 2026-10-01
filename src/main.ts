@@ -215,7 +215,7 @@ function onHook(ev: HookEvent) {
   }
   const t = applyHook(s, ev, isVisible(s.id));
   if (t.status) s.status = t.status;
-  if (t.msg) s.lastMsg = t.msg;
+  if (t.msg !== undefined) s.lastMsg = t.msg;
   if (t.prompt && !s.autoTitle) s.autoTitle = t.prompt;
   if (t.hasTranscript) s.hasTranscript = true;
   if (t.unread) s.unread += 1;
