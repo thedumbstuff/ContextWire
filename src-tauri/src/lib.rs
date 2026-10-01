@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod applog;
 pub mod claudecfg;
+pub mod gitlog;
 pub mod gitops;
 pub mod hook;
 pub mod hookserver;
@@ -226,6 +227,38 @@ async fn git_action(path: String, action: String, hash: Option<String>, message:
         Err(e) => warn!("git   {action} {path} failed: {}", e.lines().next().unwrap_or("")),
     }
     res
+}
+
+// ---------------------------------------------------------------- git view (read-only)
+
+#[tauri::command]
+async fn gv_branches(path: String) -> Result<Vec<gitlog::Branch>, String> {
+    gitlog::branches(Path::new(&path))
+}
+
+#[tauri::command]
+async fn gv_log(path: String, query: gitlog::LogQuery) -> Result<Vec<gitlog::LogEntry>, String> {
+    gitlog::log(Path::new(&path), &query)
+}
+
+#[tauri::command]
+async fn gv_authors(path: String) -> Result<Vec<String>, String> {
+    gitlog::authors(Path::new(&path))
+}
+
+#[tauri::command]
+async fn gv_files(path: String, hash: String) -> Result<Vec<gitlog::ChangedFile>, String> {
+    gitlog::commit_files(Path::new(&path), &hash)
+}
+
+#[tauri::command]
+async fn gv_detail(path: String, hash: String) -> Result<gitlog::CommitDetail, String> {
+    gitlog::commit_detail(Path::new(&path), &hash)
+}
+
+#[tauri::command]
+async fn gv_diff(path: String, hash: String, file: String, old_file: Option<String>, ignore_ws: bool) -> Result<gitlog::FileDiff, String> {
+    gitlog::file_diff(Path::new(&path), &hash, &file, old_file.as_deref(), ignore_ws)
 }
 
 // ---------------------------------------------------------------- roadmaps / search
@@ -602,6 +635,12 @@ pub fn run() {
             git_repos,
             git_log,
             git_action,
+            gv_branches,
+            gv_log,
+            gv_authors,
+            gv_files,
+            gv_detail,
+            gv_diff,
             roadmaps,
             watchtower_ensure,
             transcript_search,
