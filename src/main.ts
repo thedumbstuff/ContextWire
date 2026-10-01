@@ -53,9 +53,13 @@ async function load() {
   if (data && data.version === 1) {
     roots = data.roots ?? [];
     settings = { ...settings, ...(data.settings ?? {}) };
+    // after an app restart nothing runs (every session is resumable); after a
+    // UI reload the Rust side may still own live consoles - re-attach to those
+    const alive = new Set<string>(await invoke("sessions_running"));
     for (const s of data.sessions ?? []) {
-      // nothing survives an app restart: every session is resumable, not running
-      sessions.set(s.id, { ...s, running: false, status: "suspended" });
+      const live = alive.has(s.id);
+      sessions.set(s.id, { ...s, running: live, status: live ? (s.status === "suspended" || s.status === "exited" ? "idle" : s.status) : "suspended" });
+      if (live) host(s.id).notice("reconnected (earlier output is not shown)");
     }
     activeId = data.activeId && sessions.has(data.activeId) ? data.activeId : null;
   }
