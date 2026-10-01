@@ -138,8 +138,9 @@ phases:
           - {type: path, path: src/sidebar.ts}
       - id: P1.4
         title: Release build produces a working exe
-        status: pending
+        status: done
         effort: 2
+        why: "Release build 2026-10-01 (4 min, LTO); installed per-user via the NSIS installer and launched from Explorer with a clean environment - claude found, hooks fire through the installed exe."
         depends_on: [P1.3]
         checks:
           - {type: path, path: src-tauri/target/release/contextwire.exe}
@@ -197,13 +198,15 @@ phases:
         depends_on: [P2.4]
       - id: P3.3
         title: System tray icon with live counts tooltip, Show / Quit menu, close-to-tray
-        status: pending
+        status: done
         effort: 2
+        why: "Close button hides to tray (process + consoles keep running), verified 2026-10-01. Tray icon/menu are created at startup; the tooltip counts and the Show/Quit menu were not clicked in testing."
         depends_on: [P1.4]
       - id: P3.4
         title: Single instance + autostart with Windows (toggle in Settings)
-        status: pending
+        status: done
         effort: 2
+        why: "Verified 2026-10-01: relaunch while running shows the existing window (one process); release first run registered HKCU Run \"contextwire.exe --minimized\"."
         depends_on: [P3.3]
       - id: P3.5
         title: Clicking a toast opens that session
@@ -246,9 +249,13 @@ phases:
     tasks:
       - id: P5.1
         title: NSIS installer (tauri build) and app icon
-        status: pending
+        status: done
         effort: 2
+        why: "NSIS installer (1.76 MB) at src-tauri/target/release/bundle/nsis/, custom icon from assets/icon.png. Unsigned - SmartScreen may warn on other machines."
         depends_on: [P1.4]
+        checks:
+          - {type: path, path: src-tauri/target/release/bundle/nsis/ContextWire_0.1.0_x64-setup.exe}
+
       - id: P5.2
         title: Keyboard shortcuts (Ctrl+1..9 switch, Ctrl+N new, Ctrl+K search, Ctrl+Shift+U next unread)
         status: in_progress
@@ -306,7 +313,7 @@ features:
   - {id: F3, title: "Live status per session: working / needs you / done / idle / exited", source: own, area: status, status: shipped, task: P2.4, note: "Driven by Claude Code hooks, not screen scraping"}
   - {id: F4, title: Unread badges + highlight + needs-you floats to top, source: own, area: status, status: shipped, task: P2.4, note: "Like a chat app; cleared when you open the session"}
   - {id: F5, title: Windows toast + taskbar flash when a session needs you or finishes, source: own, area: notify, status: shipped, task: P3.1}
-  - {id: F6, title: "Tray icon with counts, close-to-tray, autostart", source: own, area: notify, status: planned, task: P3.3}
+  - {id: F6, title: "Tray icon with counts, close-to-tray, autostart", source: own, area: notify, status: shipped, task: P3.3}
   - {id: F7, title: Restore open sessions after restart, source: own, area: sessions, status: shipped, task: P4.2}
   - {id: F8, title: History of past sessions across all workspaces + one-click resume, source: own, area: workspace, status: shipped, task: P4.3}
   - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: building, task: P4.4, note: "The official app cannot see a running terminal session at all"}
