@@ -1,6 +1,6 @@
 """Watchtower - build-progress dashboard for ContextWire.
 
-Adapted from opensource/statarb/watchtower (the reference implementation).
+Adapted from the watchtower of a sibling project (roadmap engine + checks).
 Reads ``roadmap.yaml`` (the single source of truth) on every request, runs each
 task's checks, derives an effective status per task and serves the result as
 JSON plus a single-page UI with two tabs: Build (phases/tasks/decisions) and
