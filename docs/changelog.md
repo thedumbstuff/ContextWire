@@ -26,3 +26,10 @@
   orphaned live consoles; stale activity line after restart; settings overflow.
 - Watchtower: adds ~/.cargo/bin to PATH for checks (it reported cargo checks as
   CLAIMED when started from a pre-rustup shell).
+- Sidebar now lists every workspace (even empty ones) with its earlier
+  sessions from ~/.claude/projects - like `claude --resume` for all workspaces
+  at once: 3 newest shown, "Show N more", one click resumes in the right folder,
+  "+" on a workspace header starts a new session there. Sessions whose
+  transcript changed in the last 5 minutes are tagged "active" and open paused
+  with "Adopt here" so a session still running in a terminal is never resumed
+  twice. Verified in the installed build.

@@ -236,6 +236,14 @@ phases:
         status: done
         effort: 3
         depends_on: [P4.1]
+      - id: P4.5
+        title: Sidebar lists each workspace's earlier sessions (like claude --resume) - one click resumes; "active" ones open paused with Adopt here
+        status: done
+        effort: 2
+        depends_on: [P4.3]
+        why: "Owner request 2026-10-01. Verified in the installed build: a 26-day-old mysite session resumed with its full conversation; clicking a session active in the last 5 min started no second claude process. Refreshes every 60 s and after each Stop/close."
+        checks:
+          - {type: cmd, run: 'findstr /c:"Earlier sessions" src\sidebar.ts'}
       - id: P4.4
         title: Opt-in global hooks (track sessions started in plain terminals) + Adopt button
         status: in_progress
@@ -320,6 +328,7 @@ features:
   - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: planned, task: P3.5}
   - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: building, task: P5.2}
   - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
+  - {id: F14, title: Earlier sessions listed inside every workspace with one-click resume, source: own, area: workspace, status: shipped, task: P4.5, note: "Like claude --resume, but for every workspace at once; guards against resuming a session still open in a terminal"}
   - {id: F13, title: Search sessions, source: own, area: sessions, status: shipped, task: P5.3}
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
   - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}
