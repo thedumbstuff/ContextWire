@@ -204,7 +204,7 @@ function renderBar() {
   if (!s) return;
   $("barDot").className = `dot st-${s.status}`;
   $("barTitle").textContent = displayName(s);
-  $("barSub").textContent = s.cwd + (s.external ? "  ·  running in a plain terminal" : "");
+  $("barSub").textContent = (s.worktree ? `worktree ${s.worktree}  ·  ` : "") + s.cwd + (s.external ? "  ·  running in a plain terminal" : "");
   $("barState").textContent = STATUS_LABEL[s.status];
   $("barState").className = `state st-${s.status}`;
   const canResume = !s.running && (s.status === "exited" || s.status === "suspended" || s.external);
@@ -269,7 +269,8 @@ async function start(s: Session, mode: "new" | "resume", extra: string[] = []) {
   if (activeId === s.id) h.show();
   const { cols, rows } = h.size();
   const resume = mode === "resume" && s.hasTranscript;
-  const args = resume ? ["--resume", s.id] : ["--session-id", s.id, ...(s.name ? ["--name", s.name] : []), ...extra];
+  if (extra.length) s.extraArgs = extra;
+  const args = resume ? ["--resume", s.id] : ["--session-id", s.id, ...(s.name ? ["--name", s.name] : []), ...(s.extraArgs ?? [])];
   s.status = "starting";
   s.external = false;
   s.lastEvent = Date.now();
@@ -303,9 +304,12 @@ async function closeSession(id: string) {
   sessions.delete(id);
   refreshPastSoon(); // it moves to "Earlier sessions"
   if (activeId === id) {
-    const next = [...sessions.values()].sort((a, b) => b.lastEvent - a.lastEvent)[0];
+    // move to another session that is already running - never start one just
+    // because it happens to be next in the list
+    const next = [...sessions.values()].filter((x) => x.running).sort((a, b) => b.lastEvent - a.lastEvent)[0];
     activeId = null;
     if (next) select(next.id);
+    else hosts.forEach((h) => h.hide());
   }
   render();
   save();
@@ -332,6 +336,14 @@ function onHook(ev: HookEvent) {
     // a session we did not start: reported by the opt-in global hooks
     s = newSession(id, String(ev.cwd ?? ""), { external: true, status: "idle", hasTranscript: true });
     sessions.set(id, s);
+  }
+  // with --worktree Claude runs (and keeps its transcript) in a new folder
+  // inside the repo; follow it so resume and grouping use the real location
+  if (ev.hook_event_name === "SessionStart" && typeof ev.cwd === "string" && ev.cwd && ev.cwd !== s.cwd
+      && rootFor(ev.cwd, [s.cwd]) === s.cwd && /[\\/]\.claude[\\/]worktrees[\\/]/i.test(ev.cwd)) {
+    s.worktree = basename(ev.cwd);
+    uiLog("info", `session ${s.id.slice(0, 8)} runs in worktree ${s.worktree}`);
+    s.cwd = ev.cwd;
   }
   const t = applyHook(s, ev, isVisible(s.id));
   if (t.status && t.status !== s.status) uiLog("info", `status ${s.id.slice(0, 8)} ${s.status} -> ${t.status} (${ev.hook_event_name})${t.notify ? ` notify=${t.notify}` : ""}`);
@@ -416,7 +428,7 @@ async function wireEvents() {
     s.lastMsg = e.payload.code ? `exited with code ${e.payload.code}` : "session ended";
     if (e.payload.code) activity.add("exit", `${displayName(s)} exited with code ${e.payload.code}`, s.cwd, s.id);
     s.lastEvent = Date.now();
-    hosts.get(s.id)?.notice(`claude exited${e.payload.code ? ` (code ${e.payload.code})` : ""} · click Resume to continue`);
+    hosts.get(s.id)?.notice(`claude exited${e.payload.code ? ` (code ${e.payload.code})` : ""} · click ${s.hasTranscript ? "Resume" : "Start"} to continue`);
     render();
     save();
   });
@@ -495,9 +507,23 @@ async function submitNew(e: Event) {
     $("newErr").textContent = "That folder does not exist.";
     return;
   }
+  const worktree = ($("newWorktree") as HTMLInputElement).checked;
+  if (worktree) {
+    // claude --worktree exits at once in a folder that is not a git repo or that
+    // Claude has not been trusted in yet - say so here instead of failing later
+    const st: { git: boolean; trusted: boolean } = await invoke("folder_status", { path: cwd });
+    if (!st.git) {
+      $("newErr").textContent = "A worktree needs a git repository - this folder is not inside one.";
+      return;
+    }
+    if (!st.trusted) {
+      $("newErr").textContent = "Claude has not been trusted in this folder yet, and --worktree needs that. Untick the worktree option, start once, accept Claude's trust prompt - after that worktree sessions work here.";
+      return;
+    }
+  }
   if (!roots.some((r) => rootFor(cwd, [r]) === r)) roots.push(cwd); // new workspace root
   ($("dlgNew") as HTMLDialogElement).close();
-  await createSession(cwd, ($("newName") as HTMLInputElement).value.trim(), ($("newWorktree") as HTMLInputElement).checked);
+  await createSession(cwd, ($("newName") as HTMLInputElement).value.trim(), worktree);
 }
 
 const LIVE_ELSEWHERE_MS = 5 * 60 * 1000;

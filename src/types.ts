@@ -21,6 +21,8 @@ export interface Session {
   hasTranscript: boolean; // a prompt was sent, so --resume will find it
   external: boolean; // running in a plain terminal (reported by global hooks)
   running: boolean; // a PTY in this app is attached
+  worktree?: string; // name of the git worktree Claude created for this session
+  extraArgs?: string[]; // e.g. ["--worktree"], reused when the session is started again before it has a transcript
 }
 
 export interface PastSession {

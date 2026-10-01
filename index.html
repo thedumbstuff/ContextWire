@@ -76,11 +76,11 @@
           <select id="newRoot"></select>
         </label>
         <label>Folder
-          <div class="row"><input id="newCwd" spellcheck="false" /><button type="button" id="newBrowse">Browse…</button></div>
+          <div class="row"><input id="newCwd" spellcheck="false" autocomplete="off" /><button type="button" id="newBrowse">Browse…</button></div>
         </label>
         <div class="repos" id="newRepos"></div>
         <label>Name (optional)
-          <input id="newName" placeholder="e.g. fix nav bug" />
+          <input id="newName" placeholder="e.g. fix nav bug" autocomplete="off" />
         </label>
         <label class="check"><input type="checkbox" id="newWorktree" /> Isolate in a new git worktree (<code>--worktree</code>)</label>
         <div class="err" id="newErr"></div>
@@ -93,7 +93,7 @@
 
     <dialog id="dlgHistory">
       <div class="dlg wide">
-        <div class="row"><h3>History</h3><span class="spacer"></span><input id="histSearch" type="search" placeholder="Filter by title, prompt or folder" /><button id="histClose">Close</button></div>
+        <div class="row"><h3>History</h3><span class="spacer"></span><input id="histSearch" type="search" placeholder="Filter by title, prompt or folder" autocomplete="off" /><button id="histClose">Close</button></div>
         <div class="hist" id="histList">loading…</div>
       </div>
     </dialog>
@@ -148,7 +148,7 @@
     <dialog id="dlgRename">
       <form method="dialog" class="dlg">
         <h3>Rename session</h3>
-        <input id="renameInput" />
+        <input id="renameInput" autocomplete="off" />
         <div class="actions"><button type="button" data-close>Cancel</button><button class="primary" value="ok">Save</button></div>
       </form>
     </dialog>

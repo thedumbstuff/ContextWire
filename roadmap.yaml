@@ -341,10 +341,14 @@ phases:
         depends_on: [P1.2]
       - id: P6.2
         title: Worktree isolation option when starting a session (claude --worktree)
-        status: in_progress
+        status: done
         effort: 1
-        why: "New session dialog passes --worktree; not exercised live yet."
         depends_on: [P1.3]
+        why: "Verified live 2026-10-01: Claude creates .claude/worktrees/<name> on its own branch; the app follows the session into it (resume works, header and row say 'worktree <name>'). The dialog refuses up front when the folder is not a git repo or not yet trusted by Claude (claude --worktree exits at once there)."
+        checks:
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet trust_is_read"}
+          - {type: cmd, run: 'findstr /c:"folder_status" src\main.ts'}
+
       - id: P6.3
         title: Diff pane - git diff of the session's folder, refreshed on Stop
         status: pending
@@ -470,7 +474,7 @@ features:
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
   - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}
   - {id: F21, title: Two sessions side by side (Ctrl+Click), source: official, area: sessions, status: planned, task: P6.1}
-  - {id: F22, title: Git worktree isolation per session, source: official, area: sessions, status: building, task: P6.2, note: "claude --worktree"}
+  - {id: F22, title: Git worktree isolation per session, source: official, area: sessions, status: shipped, task: P6.2, note: "claude --worktree"}
   - {id: F23, title: OS notification when a background session finishes, source: official, area: notify, status: shipped, task: P3.1}
   - {id: F24, title: Visual diff review with inline comments, source: official, area: review, status: planned, task: P6.3}
   - {id: F25, title: Integrated terminal pane in the session folder, source: official, area: console, status: planned, task: P6.4}

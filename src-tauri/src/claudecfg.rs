@@ -64,6 +64,31 @@ pub fn write_session_settings(dir: &Path, exe: &Path) -> Result<PathBuf, String>
     Ok(p)
 }
 
+fn norm_path(p: &str) -> String {
+    p.replace('\\', "/").trim_end_matches('/').to_lowercase()
+}
+
+/// Has the user accepted Claude's "trust this folder" prompt for `dir` (or a
+/// parent of it)? Claude records this per folder in `~/.claude.json` under
+/// `projects.<path>.hasTrustDialogAccepted`, with either slash style.
+/// `claude --worktree` refuses to run in an untrusted folder.
+pub fn folder_trusted(claude_json: &Path, dir: &Path) -> bool {
+    let Ok(text) = std::fs::read_to_string(claude_json) else { return false };
+    let Ok(v) = serde_json::from_str::<Value>(&text) else { return false };
+    let Some(projects) = v["projects"].as_object() else { return false };
+    let trusted: Vec<String> = projects
+        .iter()
+        .filter(|(_, p)| p["hasTrustDialogAccepted"] == true)
+        .map(|(k, _)| norm_path(k))
+        .collect();
+    let target = norm_path(&dir.display().to_string());
+    trusted.iter().any(|t| target == *t || target.starts_with(&format!("{t}/")))
+}
+
+pub fn claude_json_path() -> PathBuf {
+    dirs::home_dir().unwrap_or_default().join(".claude.json")
+}
+
 pub fn user_settings_path() -> PathBuf {
     dirs::home_dir().unwrap_or_default().join(".claude").join("settings.json")
 }
@@ -167,6 +192,24 @@ mod tests {
         assert_eq!(v["hooks"]["Stop"][0]["hooks"][0]["command"], "my-own-script.sh");
         let backup = std::fs::read_to_string(format!("{}.contextwire-backup", p.display())).unwrap();
         assert_eq!(backup, original);
+    }
+
+    #[test]
+    fn trust_is_read_per_folder_and_inherited_by_subfolders() {
+        let p = tmp_file(
+            ".claude.json",
+            r#"{"projects": {
+                "C:\\Work\\trusted": {"hasTrustDialogAccepted": true},
+                "C:/Work/other": {"hasTrustDialogAccepted": false},
+                "C:/Work/Parent/": {"hasTrustDialogAccepted": true}
+            }}"#,
+        );
+        assert!(folder_trusted(&p, Path::new(r"C:\Work\trusted")));
+        assert!(folder_trusted(&p, Path::new("c:/work/TRUSTED")));
+        assert!(folder_trusted(&p, Path::new(r"C:\Work\Parent\child\deep")));
+        assert!(!folder_trusted(&p, Path::new(r"C:\Work\other")));
+        assert!(!folder_trusted(&p, Path::new(r"C:\Work\trustedx")), "prefix of a name is not a parent");
+        assert!(!folder_trusted(&p.with_file_name("missing.json"), Path::new(r"C:\Work\trusted")));
     }
 
     #[test]

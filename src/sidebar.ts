@@ -22,10 +22,12 @@ export function displayName(s: Session): string {
 
 /** One open-session row. `where` replaces the folder part of the subtitle. */
 export function sessionRow(s: Session, root: string, activeId: string | null, now: number, where?: string): string {
-  const rel = where ?? relativeTo(s.cwd, root);
+  // a Claude worktree shows as "worktree <name>" rather than its .claude\worktrees\<name> path
+  const rel = (where ?? relativeTo(s.cwd, root)).replace(/(^|[\\/])\.claude[\\/]worktrees[\\/][^\\/]+$/, "");
+  const where2 = s.worktree ? [rel, `worktree ${s.worktree}`].filter(Boolean).join(" · ") : rel;
   const cls = ["sess", `st-${s.status}`, s.id === activeId ? "active" : "", s.unread ? "unread" : ""].join(" ");
   const badge = s.unread ? `<span class="badge">${s.unread}</span>` : `<span class="when">${ago(s.lastEvent, now)}</span>`;
-  const sub = [s.external ? "terminal" : "", STATUS_LABEL[s.status], rel, s.lastMsg].filter(Boolean).join(" · ");
+  const sub = [s.external ? "terminal" : "", STATUS_LABEL[s.status], where2, s.lastMsg].filter(Boolean).join(" · ");
   return `<div class="${cls}" data-id="${esc(s.id)}" title="${esc(s.cwd)}">
       <span class="dot"></span>
       <div class="txt"><div class="t">${esc(displayName(s))}</div><div class="sub">${esc(sub)}</div></div>
@@ -91,7 +93,12 @@ interface Group {
 
 const PAST_SHOWN = 3;
 
-const firstSegment = (cwd: string, root: string) => relativeTo(cwd, root).split(/[\\/]/)[0] ?? "";
+/** Sub-heading for a session: the first folder below the workspace root.
+ *  Claude worktrees (<repo>\.claude\worktrees\x) belong to their repo. */
+const firstSegment = (cwd: string, root: string) => {
+  const seg = relativeTo(cwd, root).split(/[\\/]/)[0] ?? "";
+  return seg === ".claude" ? "" : seg;
+};
 
 export function renderSidebar(el: HTMLElement, m: SidebarModel): void {
   const f = m.filter.trim().toLowerCase();

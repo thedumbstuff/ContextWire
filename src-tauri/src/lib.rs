@@ -294,6 +294,24 @@ fn kv_save(state: State<AppState>, name: String, value: Value) -> Result<(), Str
     std::fs::rename(&tmp, &p).map_err(|e| e.to_string())
 }
 
+#[derive(Serialize)]
+struct FolderStatus {
+    is_dir: bool,
+    git: bool,
+    trusted: bool,
+}
+
+/// What the New session dialog needs before using `--worktree`.
+#[tauri::command]
+async fn folder_status(path: String) -> FolderStatus {
+    let dir = Path::new(&path);
+    FolderStatus {
+        is_dir: dir.is_dir(),
+        git: dir.is_dir() && gitops::git(dir, &["rev-parse", "--is-inside-work-tree"]).map_or(false, |o| o.trim() == "true"),
+        trusted: claudecfg::folder_trusted(&claudecfg::claude_json_path(), dir),
+    }
+}
+
 #[tauri::command]
 fn path_is_dir(path: String) -> bool {
     Path::new(&path).is_dir()
@@ -529,6 +547,7 @@ pub fn run() {
             project_folders,
             last_reply,
             path_is_dir,
+            folder_status,
             list_dirs,
             store_load,
             store_save,

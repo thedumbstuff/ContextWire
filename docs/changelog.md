@@ -78,3 +78,10 @@
   transcript a moment after the Stop hook, so the app polls for up to ~3 s.
   Hook-event handler errors are now logged instead of silently swallowed.
 - P6.1 / P6.3 / P6.4 / P6.5 on hold at the owner's request.
+- P6.2 worktree option verified live. Fixes found on the way: `claude
+  --worktree` exits at once in a folder Claude has not been trusted in - the
+  dialog now checks git + trust (~/.claude.json) first and explains; the app
+  follows the session into its .claude/worktrees/<name> folder so resume finds
+  the transcript; the worktree choice is remembered for Start; exit notice says
+  Start/Resume to match the button; closing a session no longer auto-starts the
+  next one; WebView autofill ("Saved info") disabled on text inputs.
