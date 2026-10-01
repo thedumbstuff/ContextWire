@@ -12,6 +12,7 @@ import { GitPanel } from "./panels/git";
 import { RoadmapsPanel } from "./panels/roadmaps";
 import { ActivityPanel } from "./panels/activity";
 import { SearchPanel, type SessionHits } from "./panels/search";
+import { GitView } from "./gitview/view";
 import { ago, applyHook, basename, firstLine, relativeTo, rootFor, sessionRank, topLevel } from "./status";
 
 // ---------------------------------------------------------------- state
@@ -41,6 +42,7 @@ let git: GitPanel;
 let roadmapsPanel: RoadmapsPanel;
 let activity: ActivityPanel;
 let searchPanel: SearchPanel;
+let gitView: GitView;
 
 function newSession(id: string, cwd: string, patch: Partial<Session> = {}): Session {
   const now = Date.now();
@@ -144,7 +146,9 @@ function setupPanels() {
   rail = new Rail({ panel: ui.panel, collapsed: ui.collapsed, width: ui.width }, (st, opened) => {
     if (git) onPanelChange(st, opened);
   });
+  gitView = new GitView({ onClose: closeLog, log: uiLog });
   git = new GitPanel({
+    openLog,
     roots: () => roots,
     sessions: () => [...sessions.values()],
     select: (id) => select(id),
@@ -199,7 +203,9 @@ function renderSummary() {
 
 function renderBar() {
   const s = activeId ? sessions.get(activeId) : undefined;
-  $("bar").classList.toggle("hidden", !s);
+  const gv = !!gitView?.isOpen;
+  $("terms").classList.toggle("hidden", gv);
+  $("bar").classList.toggle("hidden", !s || gv);
   $("empty").classList.toggle("hidden", !!s);
   if (!s) return;
   $("barDot").className = `dot st-${s.status}`;
@@ -239,7 +245,21 @@ function externalReleased(s: Session): boolean {
   return !!p && Date.now() - p.modified_ms >= LIVE_ELSEWHERE_MS;
 }
 
+/** Show the Git view for a repo in the main area (optionally at a commit). */
+function openLog(repo: string, hash?: string) {
+  void gitView.open(repo, hash);
+  renderBar();
+  ($("gitview") as HTMLElement).focus();
+}
+
+function closeLog() {
+  gitView.hide();
+  renderBar();
+  if (activeId) hosts.get(activeId)?.show();
+}
+
 function select(id: string | null) {
+  if (gitView?.isOpen) gitView.hide();
   if (activeId && hosts.has(activeId) && activeId !== id) hosts.get(activeId)!.hide();
   activeId = id;
   const s = id ? sessions.get(id) : undefined;

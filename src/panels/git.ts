@@ -32,6 +32,7 @@ export interface RepoInfo {
 }
 
 export interface GitCtx {
+  openLog: (repo: string, hash?: string) => void;
   roots: () => string[];
   sessions: () => Session[];
   select: (id: string) => void;
@@ -161,6 +162,7 @@ export class GitPanel {
         <button class="mini" data-act="fetch" data-path="${esc(r.path)}"${dis || (!r.has_remote ? " disabled" : "")}>Fetch</button>
         <button class="mini" data-act="pull" data-path="${esc(r.path)}"${dis || (!r.upstream ? " disabled" : "")} title="Fast-forward only - never merges">Pull${r.behind ? ` ↓${r.behind}` : ""}</button>
         <button class="mini" data-act="push" data-path="${esc(r.path)}"${dis || (!r.has_remote ? " disabled" : "")}>Push${r.ahead ? ` ↑${r.ahead}` : ""}</button>
+        <button class="mini" data-act="log" data-path="${esc(r.path)}" title="Open the full Git view (branches, graph, diffs)">Log</button>
         <button class="mini" data-act="session" data-path="${esc(r.path)}">＋ Session</button>
         ${busy ? `<span class="muted small">${esc(busy)}…</span>` : ""}
       </div>`;
@@ -169,7 +171,7 @@ export class GitPanel {
       ? `<div class="gitsess">${inRepo.map((s) => `<span class="chip" data-sid="${esc(s.id)}" title="${esc(s.cwd)}"><span class="dot st-${s.status}"></span>${esc(s.name || s.autoTitle || "session")}</span>`).join("")}</div>`
       : "";
     const rows = commits.length
-      ? commits.map((c) => `<div class="commit${c.pushed ? "" : " local"}" title="${esc(c.hash)}\n${esc(c.author)}${c.body ? "\n\n" + esc(c.body) : ""}">
+      ? commits.map((c) => `<div class="commit${c.pushed ? "" : " local"}" data-path="${esc(r.path)}" data-commit="${esc(c.hash)}" title="${esc(c.hash)}\n${esc(c.author)}${c.body ? "\n\n" + esc(c.body) : ""}">
               <span class="hash">${esc(c.short)}</span>
               <div class="txt"><div class="t">${esc(c.subject)}</div><div class="sub">${esc(c.author)} · ${ago(c.time_ms, now)}${c.pushed ? "" : " · not pushed"}</div></div>
               <button class="mini edit${c.pushed ? " locked" : ""}" data-act="reword" data-path="${esc(r.path)}" data-hash="${esc(c.hash)}"
@@ -185,6 +187,8 @@ export class GitPanel {
     if (chip) return this.ctx.select(chip.dataset.sid!);
     const act = t.closest<HTMLElement>("[data-act]");
     if (act) return this.act(act.dataset.act!, act.dataset.path!, act.dataset.hash);
+    const commit = t.closest<HTMLElement>("[data-commit]");
+    if (commit) return this.ctx.openLog(commit.dataset.path!, commit.dataset.commit!);
     const head = t.closest<HTMLElement>("[data-repo]");
     if (head) {
       const p = head.dataset.repo!;
@@ -202,6 +206,7 @@ export class GitPanel {
     const r = this.repos.find((x) => x.path === path);
     if (!r) return;
     if (action === "session") return this.ctx.newSessionIn(path);
+    if (action === "log") return this.ctx.openLog(path);
     if (action === "reword") {
       const c = (this.commits.get(path) ?? []).find((x) => x.hash === hash);
       if (!c) return;
