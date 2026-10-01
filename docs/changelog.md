@@ -94,3 +94,10 @@
 - Fixed: a panel open at startup never loaded (Git said "No git repos found");
   an unreadable hook payload created a blank session.
 - v0.2.2 installed: shortcuts, Claude's reply in rows/toasts, worktree fixes, toast click opens the session, startup panel load fix.
+- Watchtower: phase cards collapse/expand (click the header; fully verified
+  phases start folded and show status counts when folded; Expand all /
+  Collapse all; search opens phases with matches; jumping to a task unfolds
+  its phase); cards no longer stretch to their neighbour's height; the venv
+  line only shows for projects that declare one. Roadmap: P8 Git view phase;
+  P6.1/6.3/6.4/6.5 blocked by decision D6 (deferred - owner on hold), so Next
+  up only lists work that is actually wanted.

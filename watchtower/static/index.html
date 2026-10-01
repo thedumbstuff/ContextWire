@@ -73,8 +73,23 @@ details.resolved .dec { border-top: 0; padding: 6px 0 0 14px; }
 .fpill b { font-family: var(--mono); margin-left: 4px; }
 .toolbar input { flex: 1 1 180px; min-width: 0; background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 4px; padding: 6px 9px; font: 12px var(--sans); }
 .toolbar input:focus { outline: 1px solid var(--ready); }
-.phases { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 12px; }
-.phase .ph { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin-bottom: 6px; }
+.phases { display: grid; grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); gap: 12px; align-items: start; }
+.phase .ph { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin-bottom: 6px; cursor: pointer; user-select: none; }
+.phase .ph:hover h3 { color: #fff; }
+.phase .chev { display: inline-block; width: 7px; height: 7px; margin: 0 9px 2px 2px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(45deg); transition: transform .12s; }
+.phase.folded .chev { transform: rotate(-45deg); }
+.phase.folded .tasks, .phase.folded [data-none], .phase.folded .goal { display: none; }
+.phase.folded .bar { margin-bottom: 0; }
+.phase.folded .ph { margin-bottom: 4px; }
+/* searching overrides the fold state */
+.phase.search-open .tasks { display: block !important; }
+.phase.search-open .chev { transform: rotate(45deg); }
+.phase.search-miss { display: none; }
+.phase .fcounts { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 10px; vertical-align: 1px; }
+.phase .fcounts .pill { font: 600 10px var(--mono); padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); }
+.phase:not(.folded) .fcounts { display: none; }
+.pill.s-claimed { color: var(--claimed); } .pill.s-in_progress { color: var(--in_progress); } .pill.s-ready { color: var(--ready); }
+.pill.s-blocked_by_deps { color: var(--blocked_by_deps); } .pill.s-blocked { color: var(--blocked); }
 .phase .ph h3 { margin: 0; font: 600 14px var(--sans); }
 .phase .ph h3 .tid { color: var(--muted); margin-right: 6px; }
 .phase .goal { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
@@ -290,6 +305,8 @@ details.ops-more > summary span { font-family: var(--mono); font-size: 11px; }
   <div class="toolbar" id="toolbar">
     <span id="filterPills" style="display:contents"></span>
     <input id="q" type="search" placeholder="Filter tasks: id, title, why, check..." autocomplete="off">
+    <button data-foldall="0" title="Expand every phase">Expand all</button>
+    <button data-foldall="1" title="Collapse every phase">Collapse all</button>
   </div>
 
   <div class="phases" id="phases"></div>
@@ -314,6 +331,10 @@ function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } ca
 
 let hidden = new Set(load("wt.hidden", []));
 let open = new Set(load("wt.open", []));
+// phase id -> true (collapsed) / false (expanded); phases without a choice
+// default to collapsed when fully verified, so open work stands out
+let phaseFold = load("cw.phaseFold", {});
+const isFolded = (p) => (p.id in phaseFold ? phaseFold[p.id] : p.progress.pct_verified >= 100);
 let state = null;
 let busy = false;
 
@@ -349,7 +370,7 @@ function renderHeader(s) {
     `<span>last commit ${commit}</span>` +
     `<span>roadmap.yaml edited <b title="${esc(local(s.roadmap_mtime))}">${ago(s.roadmap_mtime)}</b></span>` +
     `<span>checks <b>${s.checks_enabled ? "on" : "OFF"}</b>, cache ${s.check_ttl_s}s</span>` +
-    `<span>venv <b style="color:${s.venv_present ? "var(--verified)" : "var(--claimed)"}">${s.venv_present ? "present" : "missing"}</b></span>` +
+    (s.venv_python ? `<span>venv <b style="color:${s.venv_present ? "var(--verified)" : "var(--claimed)"}">${s.venv_present ? "present" : "missing"}</b></span>` : "") +
     `<span>state built <b id="builtAgo" data-t="${esc(s.generated_at)}">${ago(s.generated_at)}</b></span>`;
 }
 
@@ -441,8 +462,11 @@ function taskHtml(t, statusById) {
 function renderPhases(s, statusById) {
   $("phases").innerHTML = s.phases.map((p) => {
     const pr = p.progress;
-    return `<section class="panel phase" data-phase="${esc(p.id)}">
-      <div class="ph"><h3><span class="tid">${esc(p.id)}</span>${esc(p.name)}</h3>
+    const counts = ["claimed", "in_progress", "ready", "blocked_by_deps", "blocked"]
+      .map((k) => [k, pr.counts[k]]).filter(([, n]) => n)
+      .map(([k, n]) => `<span class="pill s-${k}" title="${esc(LABEL[k])}">${n} ${esc(LABEL[k])}</span>`).join("");
+    return `<section class="panel phase${isFolded(p) ? " folded" : ""}" data-phase="${esc(p.id)}">
+      <div class="ph" data-fold="${esc(p.id)}" title="Click to collapse / expand"><h3><span class="chev"></span><span class="tid">${esc(p.id)}</span>${esc(p.name)}<span class="fcounts">${counts}</span></h3>
         <span class="pct"><b>${pr.pct_verified}%</b> verified${pr.pct_claimed > pr.pct_verified ? ` - <span style="color:var(--claimed)">${pr.pct_claimed}% claimed</span>` : ""}${pr.pct_in_progress ? ` - <span style="color:var(--in_progress)">${pr.pct_in_progress}% wip</span>` : ""} - ${pr.effort_total}pt</span>
         <div class="goal">${esc(p.goal)}</div></div>
       <div class="bar">${barHtml(pr)}</div>
@@ -462,7 +486,17 @@ function applyFilters() {
       if (ok) shown++;
     });
     ph.querySelector("[data-none]").classList.toggle("hidden", shown > 0);
+    // while searching, phases with matches open and the rest fold away
+    ph.classList.toggle("search-open", !!q && shown > 0);
+    ph.classList.toggle("search-miss", !!q && shown === 0);
   });
+}
+
+function setFold(id, folded) {
+  phaseFold[id] = folded;
+  save("cw.phaseFold", phaseFold);
+  const el = document.querySelector(`.phase[data-phase="${CSS.escape(id)}"]`);
+  if (el) el.classList.toggle("folded", folded);
 }
 
 function render(s) {
@@ -503,12 +537,25 @@ function jump(id) {
   const el = document.getElementById("task-" + id);
   if (!el) return;
   if (el.classList.contains("hidden")) { hidden.clear(); save("wt.hidden", []); $("q").value = ""; renderFilters(state); applyFilters(); }
+  const ph = el.closest(".phase");
+  if (ph && ph.classList.contains("folded")) setFold(ph.dataset.phase, false);
   el.open = true; open.add(id); save("wt.open", [...open]);
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500);
 }
 
 document.addEventListener("click", (e) => {
+  const fold = e.target.closest("[data-fold]");
+  if (fold) {
+    const ph = fold.closest(".phase");
+    setFold(fold.dataset.fold, !ph.classList.contains("folded"));
+    return;
+  }
+  const all = e.target.closest("[data-foldall]");
+  if (all && state) {
+    state.phases.forEach((p) => setFold(p.id, all.dataset.foldall === "1"));
+    return;
+  }
   const j = e.target.closest("[data-jump]");
   if (j) { e.preventDefault(); jump(j.dataset.jump); return; }
   const f = e.target.closest(".fpill");

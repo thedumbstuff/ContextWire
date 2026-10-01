@@ -68,6 +68,13 @@ open_decisions:
     blocks: []
     default: on
 
+  - id: D6
+    title: P6 upgrades (split view, diff pane, shell pane, chat-bubble view)
+    status: deferred
+    outcome: "On hold - owner said not to pick these up (2026-10-01)."
+    why: Owner decision; revisit when the owner asks.
+    blocks: [P6.1, P6.3, P6.4, P6.5]
+    default: on hold
   - id: D5
     title: Where and how to publish
     status: open
@@ -338,8 +345,9 @@ phases:
     tasks:
       - id: P6.1
         title: Split view - two consoles side by side
-        status: pending
+        status: blocked
         effort: 3
+        decision: D6
         why: "On hold - owner said not to pick this up (2026-10-01)."
         depends_on: [P1.2]
       - id: P6.2
@@ -354,20 +362,23 @@ phases:
 
       - id: P6.3
         title: Diff pane - git diff of the session's folder, refreshed on Stop
-        status: pending
+        status: blocked
         effort: 3
+        decision: D6
         why: "On hold - owner said not to pick this up (2026-10-01)."
         depends_on: [P2.4]
       - id: P6.4
         title: Plain shell pane per session (second PTY in the session folder)
-        status: pending
+        status: blocked
         effort: 2
+        decision: D6
         why: "On hold - owner said not to pick this up (2026-10-01)."
         depends_on: [P1.1]
       - id: P6.5
         title: Chat-bubble view (Agent SDK / stream-json) as an alternative to the raw console
-        status: pending
+        status: blocked
         effort: 5
+        decision: D6
         depends_on: [P2.4]
         why: "On hold - owner said not to pick this up (2026-10-01)."
 
