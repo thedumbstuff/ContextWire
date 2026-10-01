@@ -109,10 +109,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("cw-log-{}", uuid::Uuid::new_v4().simple()));
         let p = init(&dir).unwrap();
         write("INFO", "first line\nwith newline");
-        let t = tail(5);
-        assert_eq!(t.len(), 1);
-        assert!(t[0].contains("INFO  first line | with newline"), "{t:?}");
-        assert_eq!(&t[0][4..5], "-"); // YYYY-...
+        // other tests run in parallel and may log too - look for our own line only
+        let t = tail(20);
+        let mine: Vec<&String> = t.iter().filter(|l| l.contains("first line")).collect();
+        assert_eq!(mine.len(), 1, "{t:?}");
+        assert!(mine[0].contains("INFO  first line | with newline"), "{t:?}");
+        assert_eq!(&mine[0][4..5], "-"); // YYYY-...
         let big = "x".repeat(4096);
         for _ in 0..300 {
             write("INFO", &big); // > 1 MB in total

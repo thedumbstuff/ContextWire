@@ -33,6 +33,7 @@ struct AppState {
     session_settings: Option<PathBuf>,
     endpoint: Option<hookserver::Endpoint>,
     startup_error: Option<String>,
+    jobs: Arc<jobs::JobManager>,
 }
 
 #[derive(Serialize)]
@@ -262,6 +263,72 @@ async fn gv_detail(path: String, hash: String) -> Result<gitlog::CommitDetail, S
 #[tauri::command]
 async fn gv_diff(path: String, hash: String, file: String, old_file: Option<String>, ignore_ws: bool) -> Result<gitlog::FileDiff, String> {
     gitlog::file_diff(Path::new(&path), &hash, &file, old_file.as_deref(), ignore_ws)
+}
+
+// ---------------------------------------------------------------- scheduled jobs
+
+#[tauri::command]
+fn jobs_list(state: State<AppState>) -> Vec<jobs::JobView> {
+    state.jobs.list()
+}
+
+#[tauri::command]
+fn job_save(state: State<AppState>, input: jobs::JobInput) -> Result<String, String> {
+    state.jobs.upsert(input)
+}
+
+#[tauri::command]
+fn job_delete(state: State<AppState>, id: String) -> Result<(), String> {
+    state.jobs.delete(&id)
+}
+
+#[tauri::command]
+fn job_enable(state: State<AppState>, id: String, enabled: bool) -> Result<(), String> {
+    state.jobs.set_enabled(&id, enabled)
+}
+
+#[tauri::command]
+fn job_run(state: State<AppState>, id: String) -> Result<(), String> {
+    state.jobs.run_now(&id)
+}
+
+#[tauri::command]
+fn job_runs(state: State<AppState>, id: String) -> Vec<jobs::RunRecord> {
+    state.jobs.runs(&id, 50)
+}
+
+#[tauri::command]
+fn job_session_ids(state: State<AppState>) -> Vec<String> {
+    state.jobs.session_ids()
+}
+
+#[derive(Serialize)]
+struct CronPreview {
+    description: String,
+    next: Vec<u64>,
+    error: Option<String>,
+}
+
+/// Validate a schedule and show its next three run times.
+#[tauri::command]
+fn cron_preview(expr: String) -> CronPreview {
+    match cron::Cron::parse(&expr) {
+        Err(e) => CronPreview { description: String::new(), next: vec![], error: Some(e) },
+        Ok(c) => {
+            let mut next = Vec::new();
+            let mut t = chrono::Local::now();
+            for _ in 0..3 {
+                match c.next_after(t) {
+                    Some(n) => {
+                        next.push(n.timestamp_millis() as u64);
+                        t = n;
+                    }
+                    None => break,
+                }
+            }
+            CronPreview { description: cron::describe(&expr), next, error: None }
+        }
+    }
 }
 
 // ---------------------------------------------------------------- roadmaps / search
@@ -568,7 +635,17 @@ pub fn run() {
                 Some(e) => info!("hook endpoint 127.0.0.1:{}", e.port),
                 None => warn!("hook endpoint failed: {errors:?}"),
             }
+            let run_app = handle.clone();
+            let job_manager = jobs::JobManager::new(
+                &data_dir,
+                find_claude,
+                Arc::new(move |rec: &jobs::RunRecord| {
+                    let _ = run_app.emit("job-run", rec);
+                }),
+            );
+            job_manager.start_scheduler();
             app.manage(AppState {
+                jobs: job_manager,
                 pty: pty::PtyManager::default(),
                 data_dir,
                 session_settings,
@@ -648,7 +725,15 @@ pub fn run() {
             watchtower_ensure,
             transcript_search,
             kv_load,
-            kv_save
+            kv_save,
+            jobs_list,
+            job_save,
+            job_delete,
+            job_enable,
+            job_run,
+            job_runs,
+            job_session_ids,
+            cron_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running ContextWire");
