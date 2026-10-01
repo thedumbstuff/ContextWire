@@ -1,0 +1,335 @@
+# ContextWire roadmap - SINGLE SOURCE OF TRUTH for the watchtower.
+# Edit this file to change status; the watchtower reads it live
+# (python watchtower/server.py -> http://127.0.0.1:8766).
+#
+# Task schema:
+#   id          P<phase>.<n>
+#   title       short name
+#   status      done | in_progress | pending | blocked
+#   effort      1..5 story points (drives the % complete)
+#   depends_on  list of task ids; unmet deps are shown as "blocked by"
+#   why         plain-English reason it is pending/blocked, or what it needs
+#   decision    id of an open decision (below) that gates the task (optional)
+#   checks      automated proofs that a "done" claim is real (optional):
+#                 {type: path, path: relative/file}
+#                 {type: cmd,  run: "shell command"}   # exit 0 = pass, cwd = repo root
+# Decision schema (open_decisions): id, title, why, blocks [task ids], default,
+#   status  open | resolved | deferred   (resolved decisions block nothing)
+#   outcome text recorded when resolved/deferred
+#
+# Feature backlog schema (features) - what the app does / will do:
+#   id      F<n>
+#   title   short name
+#   source  official   (a feature of the official Claude desktop app, from
+#                       code.claude.com/docs/en/desktop, captured 2026-10-01)
+#           own        (ContextWire's own idea / the reason it exists)
+#   area    sessions | status | notify | console | workspace | review | other
+#   status  shipped | building | planned | idea | wont
+#   task    roadmap task id that delivers it (optional; shown with its live status)
+#   note    one line on what it means for ContextWire
+#
+# Status semantics in the UI:
+#   done + all checks pass  -> VERIFIED
+#   done + a check fails    -> CLAIMED (something is wrong, look at it)
+#   pending with unmet deps -> BLOCKED BY <deps>
+#   blocked                 -> needs a human decision/action (see why/decision)
+
+project: ContextWire
+tagline: One Windows app for every Claude Code console - chat-style sidebar, live terminals, status highlights and notifications
+updated: 2026-10-01
+
+open_decisions:
+  - id: D1
+    title: App shell
+    status: resolved
+    outcome: "Tauri 2 (Rust) + vanilla TypeScript + Vite; xterm.js for the console (owner chose Tauri over Electron 2026-10-01)"
+    why: Electron is fastest for embedded terminals; Tauri is ~10x smaller but the PTY side is Rust.
+    blocks: []
+    default: Tauri
+  - id: D2
+    title: Console model
+    status: resolved
+    outcome: "Option A - every chat is a real claude CLI process in a PTY (ConPTY via portable-pty). A chat-bubble view (Agent SDK / stream-json) is a later optional upgrade (F30)."
+    why: Full CLI fidelity on day one (slash commands, permission prompts, skills, TUI) vs a nicer but re-implemented chat UI.
+    blocks: []
+    default: real CLI in a PTY
+  - id: D3
+    title: How hooks reach the app
+    status: resolved
+    outcome: "Sessions started in-app get hooks via `claude --settings <json>` (no global config change) and `--session-id <uuid>` so the app knows the id up front. The hook command is the app exe itself (`ContextWire.exe --hook`) posting to a localhost endpoint with a per-install token. Global hooks in ~/.claude/settings.json are OPT-IN (Settings > Track external sessions)."
+    why: Global hooks touch every Claude session on the machine; per-session --settings keeps the default footprint zero.
+    blocks: []
+    default: per-session --settings
+  - id: D4
+    title: Tray + autostart defaults
+    status: resolved
+    outcome: "Close-to-tray, single instance, autostart with Windows ON by default (owner accepted the suggestion 2026-10-01); both toggleable in Settings."
+    why: Notifications only work while the app is running.
+    blocks: []
+    default: on
+
+phases:
+  - id: P0
+    name: Foundation
+    goal: Project skeleton, toolchain, plan, watchtower.
+    tasks:
+      - id: P0.1
+        title: Rust toolchain on this machine (rustup stable, MSVC host)
+        status: done
+        effort: 1
+        why: Installed 2026-10-01 (cargo 1.98.1). VS 2022 C++ tools and WebView2 were already present.
+        checks:
+          - {type: cmd, run: "cargo --version"}
+      - id: P0.2
+        title: Tauri 2 + vanilla-ts scaffold (create-tauri-app)
+        status: done
+        effort: 1
+        checks:
+          - {type: path, path: src-tauri/tauri.conf.json}
+          - {type: path, path: src-tauri/Cargo.toml}
+      - id: P0.3
+        title: PLAN.md, CLAUDE.md, docs/changelog.md
+        status: done
+        effort: 1
+        checks:
+          - {type: path, path: PLAN.md}
+          - {type: path, path: CLAUDE.md}
+          - {type: path, path: docs/changelog.md}
+      - id: P0.4
+        title: Watchtower (roadmap.yaml + dashboard with Build and Features tabs)
+        status: done
+        effort: 2
+        checks:
+          - {type: path, path: watchtower/server.py}
+          - {type: cmd, run: "python -m unittest discover -s watchtower/tests -q"}
+      - id: P0.5
+        title: git init + first commit
+        status: done
+        effort: 1
+        checks:
+          - {type: cmd, run: "git rev-parse --verify HEAD"}
+
+  - id: P1
+    name: Console core
+    goal: Real claude consoles in tabs - spawn, type, resize, switch, close.
+    tasks:
+      - id: P1.1
+        title: Rust PTY session manager (portable-pty / ConPTY) - spawn, write, resize, kill, output + exit events
+        status: pending
+        effort: 4
+        depends_on: [P0.2]
+        checks:
+          - {type: path, path: src-tauri/src/pty.rs}
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet"}
+      - id: P1.2
+        title: xterm.js console pane (fit addon, one live terminal per session, hidden when not active)
+        status: pending
+        effort: 3
+        depends_on: [P1.1]
+        checks:
+          - {type: path, path: src/terminal.ts}
+          - {type: cmd, run: "npx tsc --noEmit"}
+      - id: P1.3
+        title: Chat-style sidebar - sessions grouped by workspace, new/close/rename session
+        status: pending
+        effort: 3
+        depends_on: [P1.2]
+        checks:
+          - {type: path, path: src/sidebar.ts}
+      - id: P1.4
+        title: Release build produces a working exe
+        status: pending
+        effort: 2
+        depends_on: [P1.3]
+        checks:
+          - {type: path, path: src-tauri/target/release/contextwire.exe}
+
+  - id: P2
+    name: Status wiring
+    goal: Every session reports working / needs-you / done; the sidebar highlights like a chat app.
+    tasks:
+      - id: P2.1
+        title: Hook client mode (`contextwire.exe --hook`) - reads hook JSON on stdin, posts to the app, never blocks Claude
+        status: pending
+        effort: 2
+        depends_on: [P1.1]
+        checks:
+          - {type: path, path: src-tauri/src/hook.rs}
+      - id: P2.2
+        title: Localhost hook endpoint with per-install token; emits status events to the UI
+        status: pending
+        effort: 2
+        depends_on: [P2.1]
+        checks:
+          - {type: path, path: src-tauri/src/hookserver.rs}
+      - id: P2.3
+        title: In-app sessions launched with --session-id + --settings hooks (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Notification, Stop, SessionEnd)
+        status: pending
+        effort: 2
+        depends_on: [P2.2]
+      - id: P2.4
+        title: Sidebar status dots, unread counts, bold/red highlight, needs-you floats to top, cleared on open
+        status: pending
+        effort: 3
+        depends_on: [P2.3, P1.3]
+      - id: P2.5
+        title: End-to-end verification - a real claude session in the app goes working -> done and the row highlights
+        status: pending
+        effort: 2
+        depends_on: [P2.4]
+        why: Automated test covers the hook round-trip (cargo test); the live check with a real claude turn is done by hand.
+
+  - id: P3
+    name: Notifications and tray
+    goal: Know when a session needs you without looking at the app.
+    tasks:
+      - id: P3.1
+        title: Windows toast on needs-you, and on done when the session is not in view
+        status: pending
+        effort: 2
+        depends_on: [P2.4]
+      - id: P3.2
+        title: Taskbar flash (request_user_attention) on needs-you
+        status: pending
+        effort: 1
+        depends_on: [P2.4]
+      - id: P3.3
+        title: System tray icon with live counts tooltip, Show / Quit menu, close-to-tray
+        status: pending
+        effort: 2
+        depends_on: [P1.4]
+      - id: P3.4
+        title: Single instance + autostart with Windows (toggle in Settings)
+        status: pending
+        effort: 2
+        depends_on: [P3.3]
+      - id: P3.5
+        title: Clicking a toast opens that session
+        status: pending
+        effort: 2
+        depends_on: [P3.1]
+        why: tauri-plugin-notification on desktop has no click callback yet; needs a WinRT toast activation handler (windows crate) or a protocol-activation URL.
+
+  - id: P4
+    name: Workspaces and resume
+    goal: Know every workspace root and every past session; resume anything in the right folder.
+    tasks:
+      - id: P4.1
+        title: Workspace registry seeded from ~/.claude/projects (cwd read from transcripts) + add-folder picker
+        status: pending
+        effort: 2
+        depends_on: [P1.3]
+        checks:
+          - {type: path, path: src-tauri/src/workspaces.rs}
+      - id: P4.2
+        title: Restore open sessions after app restart (claude --resume <id> in the original cwd)
+        status: pending
+        effort: 2
+        depends_on: [P4.1, P2.3]
+      - id: P4.3
+        title: History browser - past sessions per workspace from transcripts, one-click resume
+        status: pending
+        effort: 3
+        depends_on: [P4.1]
+      - id: P4.4
+        title: Opt-in global hooks (track sessions started in plain terminals) + Adopt button
+        status: pending
+        effort: 3
+        depends_on: [P2.2]
+        why: Installs/removes one tagged entry per event in ~/.claude/settings.json, with a backup. Off by default (D3).
+
+  - id: P5
+    name: Packaging and polish
+    goal: Installable, nice to use daily.
+    tasks:
+      - id: P5.1
+        title: NSIS installer (tauri build) and app icon
+        status: pending
+        effort: 2
+        depends_on: [P1.4]
+      - id: P5.2
+        title: Keyboard shortcuts (Ctrl+1..9 switch, Ctrl+N new, Ctrl+K search, Ctrl+Shift+U next unread)
+        status: pending
+        effort: 2
+        depends_on: [P2.4]
+      - id: P5.3
+        title: Search sessions by name / folder / last message
+        status: pending
+        effort: 2
+        depends_on: [P4.3]
+      - id: P5.4
+        title: Per-session last-activity preview line in the sidebar (last prompt / last Claude summary)
+        status: pending
+        effort: 2
+        depends_on: [P2.4]
+
+  - id: P6
+    name: Upgrades from the official app
+    goal: Pull in the best of the official Claude desktop app (see the Features tab, source = official).
+    tasks:
+      - id: P6.1
+        title: Split view - two consoles side by side
+        status: pending
+        effort: 3
+        depends_on: [P1.2]
+      - id: P6.2
+        title: Worktree isolation option when starting a session (claude --worktree)
+        status: pending
+        effort: 1
+        depends_on: [P1.3]
+      - id: P6.3
+        title: Diff pane - git diff of the session's folder, refreshed on Stop
+        status: pending
+        effort: 3
+        depends_on: [P2.4]
+      - id: P6.4
+        title: Plain shell pane per session (second PTY in the session folder)
+        status: pending
+        effort: 2
+        depends_on: [P1.1]
+      - id: P6.5
+        title: Chat-bubble view (Agent SDK / stream-json) as an alternative to the raw console
+        status: pending
+        effort: 5
+        depends_on: [P2.4]
+        why: Big job; only worth it after daily use shows the console view is limiting.
+
+features:
+  # ---- ContextWire's own core (why it exists) ----
+  - {id: F1, title: Real claude CLI console in every chat, source: own, area: console, status: planned, task: P1.2, note: "Full CLI fidelity - slash commands, permission prompts, skills, your TUI settings"}
+  - {id: F2, title: Chat-style sidebar grouped by workspace root, source: own, area: sessions, status: planned, task: P1.3}
+  - {id: F3, title: "Live status per session: working / needs you / done / idle / exited", source: own, area: status, status: planned, task: P2.4, note: "Driven by Claude Code hooks, not screen scraping"}
+  - {id: F4, title: Unread badges + highlight + needs-you floats to top, source: own, area: status, status: planned, task: P2.4, note: "Like a chat app; cleared when you open the session"}
+  - {id: F5, title: Windows toast + taskbar flash when a session needs you or finishes, source: own, area: notify, status: planned, task: P3.1}
+  - {id: F6, title: "Tray icon with counts, close-to-tray, autostart", source: own, area: notify, status: planned, task: P3.3}
+  - {id: F7, title: Restore open sessions after restart, source: own, area: sessions, status: planned, task: P4.2}
+  - {id: F8, title: History of past sessions across all workspaces + one-click resume, source: own, area: workspace, status: planned, task: P4.3}
+  - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: planned, task: P4.4, note: "The official app cannot see a running terminal session at all"}
+  - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: planned, task: P3.5}
+  - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: planned, task: P5.2}
+  - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
+  - {id: F13, title: Search sessions, source: own, area: sessions, status: planned, task: P5.3}
+  # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
+  - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: planned, task: P1.3, note: "Covered by F2-F4"}
+  - {id: F21, title: Two sessions side by side (Ctrl+Click), source: official, area: sessions, status: planned, task: P6.1}
+  - {id: F22, title: Git worktree isolation per session, source: official, area: sessions, status: planned, task: P6.2, note: "claude --worktree"}
+  - {id: F23, title: OS notification when a background session finishes, source: official, area: notify, status: planned, task: P3.1}
+  - {id: F24, title: Visual diff review with inline comments, source: official, area: review, status: planned, task: P6.3}
+  - {id: F25, title: Integrated terminal pane in the session folder, source: official, area: console, status: planned, task: P6.4}
+  - {id: F26, title: File pane (open and edit files), source: official, area: review, status: idea}
+  - {id: F27, title: Browser / app preview pane with auto-verify, source: official, area: review, status: idea}
+  - {id: F28, title: PR status monitoring + CI-finished notification, source: official, area: notify, status: idea, note: "gh pr checks polling per session branch"}
+  - {id: F29, title: Side question without derailing the session, source: official, area: console, status: idea, note: "Possible as a /btw-style forked session"}
+  - {id: F30, title: "Chat-bubble UI (graphical transcript, tool cards, approve buttons)", source: official, area: console, status: planned, task: P6.5}
+  - {id: F31, title: Plan / tasks / subagent panes, source: official, area: review, status: idea}
+  - {id: F32, title: Scheduled recurring tasks, source: official, area: sessions, status: idea}
+  - {id: F33, title: Cloud sessions that survive app close, source: official, area: sessions, status: idea}
+  - {id: F34, title: SSH and WSL sessions, source: official, area: sessions, status: idea, note: "PTY could run wsl.exe / ssh claude"}
+  - {id: F35, title: Claude can check on / message / archive your other sessions, source: official, area: sessions, status: idea}
+  - {id: F36, title: "Dispatch - start sessions from your phone, push notifications", source: official, area: notify, status: idea}
+  - {id: F37, title: "@mention files with autocomplete; attach images/PDFs", source: official, area: console, status: idea}
+  - {id: F38, title: Model + permission-mode pickers next to the prompt, source: official, area: console, status: idea, note: "In the CLI these are /model and Shift+Tab already"}
+  - {id: F39, title: Usage view, source: official, area: other, status: idea}
+  - {id: F40, title: Computer use (app and screen control), source: official, area: other, status: wont, note: "Lives in Claude itself, not the shell app"}
+  - {id: F41, title: iOS simulator pane, source: official, area: other, status: wont, note: "macOS only"}
+  - {id: F42, title: Connectors / plugin manager UI, source: official, area: other, status: idea}
