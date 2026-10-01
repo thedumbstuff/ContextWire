@@ -50,3 +50,11 @@
   SECURITY (threat model of the hook endpoint), GitHub CI on windows-latest,
   issue/PR templates, .gitattributes/.editorconfig, scrubbed screenshots.
   Publishing (repo, CI run, release) waits on decision D5.
+- PyCharm-style tool windows (P7, in testing): icon rail with Active, All
+  Sessions (workspace -> repo -> sessions), Git (repos newest-first with toggle,
+  commits, fetch / ff-only pull / push with confirm / edit an unpushed HEAD
+  message), Roadmaps (roll-up of every roadmap.yaml, opens its watchtower),
+  Activity (persisted timeline) and Search (full text across transcripts).
+  Collapsible + resizable panel, Alt+1..6, Ctrl+Shift+F. Dev builds now use
+  %APPDATA%\ContextWire-dev and their own identity (`npm run dev:app`).
+- Fixed: with the panel hidden the console slid into the empty panel column.

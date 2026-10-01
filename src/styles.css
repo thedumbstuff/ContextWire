@@ -28,6 +28,7 @@ code { font-family: var(--mono); font-size: 12px; }
 .app { display: grid; grid-template-columns: 46px var(--pw, 300px) 4px minmax(0, 1fr); height: 100vh; }
 .app.collapsed { grid-template-columns: 46px 0 0 minmax(0, 1fr); }
 .app.collapsed .sidebar, .app.collapsed .splitter { display: none; }
+.rail { grid-column: 1; } .sidebar { grid-column: 2; } .splitter { grid-column: 3; } .main { grid-column: 4; }
 
 /* ---- sidebar ---- */
 .sidebar { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 10px 8px; gap: 8px; }
