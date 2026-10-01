@@ -1,7 +1,7 @@
 {
   "name": "contextwire",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "One window for every Claude Code console - Windows app hosting all claude CLI sessions with status highlights and notifications",
   "license": "MIT",
   "type": "module",

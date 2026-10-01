@@ -58,3 +58,6 @@
   Collapsible + resizable panel, Alt+1..6, Ctrl+Shift+F. Dev builds now use
   %APPDATA%\ContextWire-dev and their own identity (`npm run dev:app`).
 - Fixed: with the panel hidden the console slid into the empty panel column.
+- v0.2.0 installed (2026-10-01): tool-window rail + six panels, Edit on every
+  unpushed commit. Before this the installed app was still 0.1.1, so after a
+  reboot it showed the old single sidebar.
