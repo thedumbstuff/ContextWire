@@ -5,6 +5,8 @@ pub mod gitops;
 pub mod hook;
 pub mod hookserver;
 pub mod pty;
+pub mod roadmaps;
+pub mod search;
 pub mod workspaces;
 
 use std::path::{Path, PathBuf};
@@ -172,6 +174,109 @@ async fn past_sessions(limit: Option<usize>) -> Vec<workspaces::PastSession> {
 #[tauri::command]
 async fn project_folders() -> Vec<String> {
     workspaces::project_folders(&workspaces::projects_dir())
+}
+
+// ---------------------------------------------------------------- git panel
+
+/// Every repo under the workspace roots with its status (git calls run in parallel).
+#[tauri::command]
+async fn git_repos(roots: Vec<String>) -> Vec<gitops::RepoInfo> {
+    let repos = gitops::find_repos(&roots);
+    std::thread::scope(|sc| {
+        let handles: Vec<_> = repos.iter().map(|r| sc.spawn(move || gitops::status(r))).collect();
+        handles.into_iter().filter_map(|h| h.join().ok()).collect()
+    })
+}
+
+#[tauri::command]
+async fn git_log(path: String, n: Option<usize>) -> Result<Vec<gitops::Commit>, String> {
+    gitops::log(Path::new(&path), n.unwrap_or(30))
+}
+
+/// fetch | pull | push | reword. Every action is logged with its outcome.
+#[tauri::command]
+async fn git_action(path: String, action: String, hash: Option<String>, message: Option<String>) -> Result<String, String> {
+    let dir = Path::new(&path);
+    let res = match action.as_str() {
+        "fetch" => gitops::fetch(dir),
+        "pull" => gitops::pull(dir),
+        "push" => gitops::push(dir),
+        "reword" => gitops::reword_head(dir, hash.as_deref().unwrap_or(""), message.as_deref().unwrap_or("")),
+        other => Err(format!("unknown git action {other}")),
+    };
+    match &res {
+        Ok(out) => info!("git   {action} {path} ok: {}", out.lines().last().unwrap_or("")),
+        Err(e) => warn!("git   {action} {path} failed: {}", e.lines().next().unwrap_or("")),
+    }
+    res
+}
+
+// ---------------------------------------------------------------- roadmaps / search
+
+#[tauri::command]
+async fn roadmaps(roots: Vec<String>) -> Vec<roadmaps::Roadmap> {
+    let mut dirs: Vec<PathBuf> = roots.iter().map(PathBuf::from).collect();
+    dirs.extend(gitops::find_repos(&roots));
+    let mut seen = std::collections::HashSet::new();
+    dirs.retain(|d| seen.insert(d.display().to_string().to_lowercase()));
+    dirs.iter().filter_map(|d| roadmaps::read(d)).collect()
+}
+
+/// Make sure a repo's watchtower is serving on `port`; the UI then opens it.
+#[tauri::command]
+async fn watchtower_ensure(repo: String, port: u16) -> Result<bool, String> {
+    if roadmaps::port_open(port) {
+        return Ok(true);
+    }
+    let script = Path::new(&repo).join("watchtower").join("server.py");
+    if !script.exists() {
+        return Err("this repo has no watchtower/server.py".into());
+    }
+    let py = which::which("pythonw").or_else(|_| which::which("python")).map_err(|_| "python not found on PATH")?;
+    let mut cmd = std::process::Command::new(py);
+    cmd.arg(&script).current_dir(&repo);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000 | 0x0000_0008); // no window, detached
+    }
+    cmd.spawn().map_err(|e| format!("start watchtower: {e}"))?;
+    info!("watchtower started for {repo} on :{port}");
+    for _ in 0..40 {
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        if roadmaps::port_open(port) {
+            return Ok(true);
+        }
+    }
+    Err(format!("watchtower did not come up on port {port}"))
+}
+
+#[tauri::command]
+async fn transcript_search(query: String, limit: Option<usize>) -> Vec<search::SessionHits> {
+    search::search(&workspaces::projects_dir(), &query, limit.unwrap_or(60))
+}
+
+// ---------------------------------------------------------------- small json store
+
+fn kv_path(state: &AppState, name: &str) -> Result<PathBuf, String> {
+    if name.is_empty() || !name.chars().all(|c| c.is_ascii_lowercase() || c == '_') {
+        return Err(format!("bad store name {name:?}"));
+    }
+    Ok(state.data_dir.join(format!("{name}.json")))
+}
+
+#[tauri::command]
+fn kv_load(state: State<AppState>, name: String) -> Result<Value, String> {
+    let p = kv_path(&state, &name)?;
+    Ok(std::fs::read_to_string(p).ok().and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok()).unwrap_or(Value::Null))
+}
+
+#[tauri::command]
+fn kv_save(state: State<AppState>, name: String, value: Value) -> Result<(), String> {
+    let p = kv_path(&state, &name)?;
+    let tmp = p.with_extension("json.tmp");
+    std::fs::write(&tmp, serde_json::to_vec(&value).unwrap()).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, &p).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -418,7 +523,15 @@ pub fn run() {
             quit_app,
             ui_log,
             diagnostics,
-            open_logs
+            open_logs,
+            git_repos,
+            git_log,
+            git_action,
+            roadmaps,
+            watchtower_ensure,
+            transcript_search,
+            kv_load,
+            kv_save
         ])
         .run(tauri::generate_context!())
         .expect("error while running ContextWire");
