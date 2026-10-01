@@ -329,7 +329,8 @@ function nextAttention(): Session | undefined {
 
 function onHook(ev: HookEvent) {
   const id = ev.cw_tab ?? ev.session_id;
-  if (!id) return;
+  // an event without a name (unreadable hook payload) must not create a blank session
+  if (!id || !ev.hook_event_name) return;
   let s = sessions.get(id);
   if (!s) {
     if (ev.hook_event_name === "SessionEnd") return;
@@ -843,6 +844,9 @@ async function main() {
   await activity.load();
   await seedRoots();
   await refreshPast(); // select() below needs transcript times for the open-elsewhere check
+  // the panel remembered from last time is open but was never "opened" - load it now
+  // that the workspaces are known (otherwise Git said "no repos found")
+  if (!rail.state.collapsed) onPanelChange(rail.state, rail.state.panel);
   await wireEvents();
   notifyOk = await isPermissionGranted().catch(() => false);
   if (!notifyOk) notifyOk = (await requestPermission().catch(() => "denied")) === "granted";

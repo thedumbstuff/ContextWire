@@ -85,3 +85,11 @@
   the transcript; the worktree choice is remembered for Start; exit notice says
   Start/Resume to match the button; closing a session no longer auto-starts the
   next one; WebView autofill ("Saved info") disabled on text inputs.
+- P3.5 toast click opens the session (verified on the installed build). Own
+  WinRT toasts: the notification plugin cannot report clicks and the helper
+  crate dropped the toast object, so the Activated event never fired; the app
+  now keeps the last 20 toasts alive and declares its AppUserModelID at start.
+  Toasts show as "ContextWire" with the app icon. Dev builds borrow
+  PowerShell's identity (no Start-menu shortcut), so their clicks do nothing.
+- Fixed: a panel open at startup never loaded (Git said "No git repos found");
+  an unreadable hook payload created a blank session.

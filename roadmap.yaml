@@ -217,10 +217,13 @@ phases:
         depends_on: [P3.3]
       - id: P3.5
         title: Clicking a toast opens that session
-        status: pending
+        status: done
         effort: 2
         depends_on: [P3.1]
-        why: tauri-plugin-notification on desktop has no click callback yet; needs a WinRT toast activation handler (windows crate) or a protocol-activation URL.
+        why: "Verified 2026-10-01 on the installed build: click -> log 'toast clicked', window shown, session selected. Own WinRT toasts (the plugin cannot report clicks); the ToastNotification is kept alive and the process declares the app's AppUserModelID. Dev builds show toasts as PowerShell, so clicks only work in the installed app."
+        checks:
+          - {type: path, path: src-tauri/src/toast.rs}
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet xml_is_escaped"}
 
   - id: P4
     name: Workspaces and resume
@@ -461,7 +464,7 @@ features:
   - {id: F7, title: Restore open sessions after restart, source: own, area: sessions, status: shipped, task: P4.2}
   - {id: F8, title: History of past sessions across all workspaces + one-click resume, source: own, area: workspace, status: shipped, task: P4.3}
   - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: building, task: P4.4, note: "The official app cannot see a running terminal session at all"}
-  - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: planned, task: P3.5}
+  - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: shipped, task: P3.5}
   - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: shipped, task: P5.2}
   - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: shipped, task: P5.4}
   - {id: F14, title: Earlier sessions listed inside every workspace with one-click resume, source: own, area: workspace, status: shipped, task: P4.5, note: "Like claude --resume, but for every workspace at once; guards against resuming a session still open in a terminal"}
