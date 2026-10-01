@@ -113,7 +113,7 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .hrow .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hrow .sub { color: var(--faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hrow .when { color: var(--faint); font-size: 11px; }
-.roots { display: grid; gap: 4px; }
+.roots { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .rootrow { display: flex; gap: 8px; align-items: center; font: 12px var(--mono); }
 .rootrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rootrow button { padding: 2px 8px; font-size: 11px; }
