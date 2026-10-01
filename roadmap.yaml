@@ -282,6 +282,21 @@ phases:
         effort: 2
         depends_on: [P2.4]
 
+      - id: P5.5
+        title: "Troubleshooting: rotating log file (hook events, status changes, console start/exit, errors) + Copy diagnostics / Open logs in Settings"
+        status: in_progress
+        effort: 2
+        why: "Owner asked 2026-10-01 how issues will be found. Logs never contain prompts or conversation text; diagnostics add a status/folder-only session summary."
+        checks:
+          - {type: path, path: src-tauri/src/applog.rs}
+          - {type: cmd, run: 'findstr /c:"Copy diagnostics" index.html'}
+      - id: P5.6
+        title: Watchtower check - installed app is the latest build of the latest source
+        status: in_progress
+        effort: 1
+        checks:
+          - {type: cmd, run: "python watchtower/checks/installed_current.py"}
+
   - id: P6
     name: Upgrades from the official app
     goal: Pull in the best of the official Claude desktop app (see the Features tab, source = official).

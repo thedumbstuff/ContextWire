@@ -1,6 +1,6 @@
 [package]
 name = "contextwire"
-version = "0.1.0"
+version = "0.1.1"
 description = "One window for every Claude Code console"
 authors = ["Shwetank"]
 edition = "2021"
