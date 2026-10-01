@@ -27,6 +27,8 @@ const sessions = new Map<string, Session>();
 const hosts = new Map<string, TermHost>();
 let activeId: string | null = null;
 const collapsed = new Set<string>();
+const pastExpanded = new Set<string>();
+let past: PastSession[] = []; // transcripts on disk, newest first (refreshed in the background)
 let notifyOk = false;
 
 function newSession(id: string, cwd: string, patch: Partial<Session> = {}): Session {
@@ -72,7 +74,10 @@ function isVisible(id: string): boolean {
 }
 
 function render() {
-  renderSidebar($("groups"), [...sessions.values()], roots, activeId, ($("search") as HTMLInputElement).value, collapsed);
+  renderSidebar($("groups"), {
+    sessions: [...sessions.values()], past, roots, activeId,
+    filter: ($("search") as HTMLInputElement).value, collapsed, pastExpanded,
+  });
   renderSummary();
   renderBar();
 }
@@ -187,6 +192,7 @@ async function closeSession(id: string) {
   hosts.get(id)?.dispose();
   hosts.delete(id);
   sessions.delete(id);
+  refreshPastSoon(); // it moves to "Earlier sessions"
   if (activeId === id) {
     const next = [...sessions.values()].sort((a, b) => b.lastEvent - a.lastEvent)[0];
     activeId = null;
@@ -221,6 +227,7 @@ function onHook(ev: HookEvent) {
   if (t.unread) s.unread += 1;
   s.lastEvent = Date.now();
   if (t.notify) notify(s, t.notify);
+  if (ev.hook_event_name === "Stop" || ev.hook_event_name === "SessionEnd") refreshPastSoon();
   render();
   save();
 }
@@ -285,14 +292,14 @@ async function listDirs(path: string): Promise<{ name: string; git: boolean }[]>
   }
 }
 
-function openNew(prefillCwd?: string) {
+function openNew(prefillCwd?: string, root?: string) {
   const dlg = $("dlgNew") as HTMLDialogElement;
   const sel = $("newRoot") as HTMLSelectElement;
   const cwd = $("newCwd") as HTMLInputElement;
-  const lastRoot = activeId && sessions.get(activeId) ? rootFor(sessions.get(activeId)!.cwd, roots) : roots[0];
+  const lastRoot = root ?? (activeId && sessions.get(activeId) ? rootFor(sessions.get(activeId)!.cwd, roots) : roots[0]);
   sel.innerHTML = roots.map((r) => `<option value="${esc(r)}"${r === lastRoot ? " selected" : ""}>${esc(basename(r))} — ${esc(r)}</option>`).join("")
     + `<option value="">Other folder…</option>`;
-  cwd.value = prefillCwd ?? sel.value;
+  cwd.value = prefillCwd ?? root ?? sel.value;
   ($("newName") as HTMLInputElement).value = "";
   ($("newWorktree") as HTMLInputElement).checked = false;
   $("newErr").textContent = "";
@@ -323,13 +330,33 @@ async function submitNew(e: Event) {
   await createSession(cwd, ($("newName") as HTMLInputElement).value.trim(), ($("newWorktree") as HTMLInputElement).checked);
 }
 
-let past: PastSession[] = [];
+let pastBusy = false;
+let pastTimer: number | undefined;
+/** Re-read past sessions from ~/.claude/projects (what `claude --resume` lists). */
+async function refreshPast() {
+  if (pastBusy) return;
+  pastBusy = true;
+  try {
+    past = await invoke("past_sessions", { limit: 400 });
+    render();
+  } catch (e) {
+    uiLog("error", `past sessions: ${e}`);
+  } finally {
+    pastBusy = false;
+  }
+}
+/** A turn finished or a session closed - its transcript changed; refresh soon. */
+function refreshPastSoon() {
+  clearTimeout(pastTimer);
+  pastTimer = window.setTimeout(() => void refreshPast(), 2500);
+}
+
 async function openHistory() {
   const dlg = $("dlgHistory") as HTMLDialogElement;
   dlg.showModal();
   ($("histSearch") as HTMLInputElement).focus();
   $("histList").textContent = "loading…";
-  past = await invoke("past_sessions", { limit: 400 });
+  await refreshPast();
   renderHistory();
 }
 
@@ -418,7 +445,19 @@ function bindUi() {
   $("search").oninput = () => render();
 
   $("groups").onclick = (e) => {
-    const row = (e.target as HTMLElement).closest<HTMLElement>(".sess");
+    const t = e.target as HTMLElement;
+    const more = t.closest<HTMLElement>("[data-pastroot]");
+    if (more) {
+      const r = more.dataset.pastroot!;
+      pastExpanded.has(r) ? pastExpanded.delete(r) : pastExpanded.add(r);
+      render();
+      return;
+    }
+    const gnew = t.closest<HTMLElement>("[data-newroot]");
+    if (gnew) { openNew(undefined, gnew.dataset.newroot!); return; }
+    const pastRow = t.closest<HTMLElement>("[data-pid]");
+    if (pastRow) { resumePast(pastRow.dataset.pid!); return; }
+    const row = t.closest<HTMLElement>(".sess");
     if (row) { select(row.dataset.id!); return; }
     const head = (e.target as HTMLElement).closest<HTMLElement>(".ghead");
     if (head) {
@@ -538,7 +577,8 @@ function bindUi() {
     if (act[k]) { e.preventDefault(); e.stopPropagation(); act[k](); }
   }, true);
 
-  setInterval(() => renderSidebar($("groups"), [...sessions.values()], roots, activeId, ($("search") as HTMLInputElement).value, collapsed), 30000);
+  setInterval(() => render(), 30000); // keep "5m ago" labels fresh
+  setInterval(() => void refreshPast(), 60000); // sessions started elsewhere show up too
 }
 
 async function main() {
@@ -547,6 +587,7 @@ async function main() {
   info = await invoke("app_info");
   await load();
   await seedRoots();
+  void refreshPast();
   await wireEvents();
   notifyOk = await isPermissionGranted().catch(() => false);
   if (!notifyOk) notifyOk = (await requestPermission().catch(() => "denied")) === "granted";

@@ -70,7 +70,8 @@ export function sessionRank(a: Session, b: Session): number {
   return w(b) - w(a) || b.lastEvent - a.lastEvent;
 }
 
-const norm = (p: string) => p.replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
+/** Comparable form of a Windows path: backslashes, no trailing slash, lower case. */
+export const norm = (p: string) => p.replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
 
 /** The registered root that contains `cwd` (longest match), else `cwd` itself. */
 export function rootFor(cwd: string, roots: string[]): string {

@@ -119,3 +119,16 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .rootrow button { padding: 2px 8px; font-size: 11px; }
 
 @media (max-width: 900px) { .app { grid-template-columns: 240px minmax(0, 1fr); } }
+
+/* ---- earlier (resumable) sessions inside each workspace ---- */
+.pasthead { color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding: 6px 8px 2px 22px; }
+.sess.past { padding-top: 5px; padding-bottom: 5px; }
+.sess.past .resume { color: var(--faint); font-size: 12px; text-align: center; }
+.sess.past:hover .resume { color: var(--accent); }
+.sess.past .t { color: var(--muted); font-size: 12px; }
+.sess.past:hover .t { color: var(--text); }
+.pastmore { background: none; border: 0; color: var(--accent); font-size: 11px; padding: 2px 8px 4px 30px; }
+.pastmore:hover { text-decoration: underline; }
+.gnew { margin-left: auto; background: none; border: 0; padding: 0 4px; color: var(--faint); font-size: 14px; line-height: 1; visibility: hidden; }
+.ghead:hover .gnew { visibility: visible; }
+.gnew:hover { color: var(--accent); }
