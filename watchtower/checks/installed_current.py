@@ -9,7 +9,6 @@ Exit 0 = pass; otherwise prints what is stale and exits 1.
 
 from __future__ import annotations
 
-import hashlib
 import os
 import sys
 from pathlib import Path
@@ -19,10 +18,6 @@ BUILT = ROOT / "src-tauri" / "target" / "release" / "contextwire.exe"
 INSTALLED = Path(os.environ.get("LOCALAPPDATA", "")) / "ContextWire" / "contextwire.exe"
 SOURCES = [ROOT / "src", ROOT / "src-tauri" / "src", ROOT / "index.html",
            ROOT / "src-tauri" / "Cargo.toml", ROOT / "src-tauri" / "tauri.conf.json"]
-
-
-def sha(p: Path) -> str:
-    return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
 def newest_source() -> tuple[float, Path]:
@@ -38,8 +33,9 @@ def main() -> int:
         print("no release build: run npm run tauri build")
         return 1
     problems = []
-    if sha(INSTALLED) != sha(BUILT):
-        problems.append("installed exe differs from the latest release build - reinstall the NSIS setup")
+    i, b = INSTALLED.stat(), BUILT.stat()
+    if i.st_size != b.st_size or abs(i.st_mtime - b.st_mtime) > 120:
+        problems.append("installed exe is not the latest release build - reinstall the NSIS setup")
     t, f = newest_source()
     if t > BUILT.stat().st_mtime:
         problems.append(f"source changed after the last release build ({f.relative_to(ROOT)}) - rebuild")

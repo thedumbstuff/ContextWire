@@ -139,6 +139,15 @@ function host(id: string): TermHost {
   return h;
 }
 
+/** Is a session we parked as "maybe open in a terminal" safe to resume now?
+ *  With global hooks on, the terminal session reports SessionEnd, so trust that.
+ *  Without them, fall back to the transcript having been quiet for 5 minutes. */
+function externalReleased(s: Session): boolean {
+  if (info?.global_hooks) return s.status === "exited";
+  const p = past.find((x) => x.id === s.id);
+  return !!p && Date.now() - p.modified_ms >= LIVE_ELSEWHERE_MS;
+}
+
 function select(id: string | null) {
   if (activeId && hosts.has(activeId) && activeId !== id) hosts.get(activeId)!.hide();
   activeId = id;
@@ -148,6 +157,13 @@ function select(id: string | null) {
     if (s.status === "done") s.status = "idle";
     const h = host(s.id);
     h.show();
+    if (s.external && !s.running && externalReleased(s)) {
+      // the "may be open in a terminal" pause is re-checked on every open, not kept forever
+      uiLog("info", `release ${s.id.slice(0, 8)}: no longer looks open elsewhere`);
+      s.external = false;
+      s.status = "suspended";
+      s.lastMsg = "";
+    }
     if (!s.external && !s.running && s.status === "suspended") void start(s, "resume");
     else if (s.external && !s.running) {
       h.notice("This session may still be running in a terminal (it was active in the last few minutes). Close it there first, then click \"Adopt here\" to continue it in ContextWire.");
@@ -621,7 +637,7 @@ async function main() {
   info = await invoke("app_info");
   await load();
   await seedRoots();
-  void refreshPast();
+  await refreshPast(); // select() below needs transcript times for the open-elsewhere check
   await wireEvents();
   notifyOk = await isPermissionGranted().catch(() => false);
   if (!notifyOk) notifyOk = (await requestPermission().catch(() => "denied")) === "granted";
