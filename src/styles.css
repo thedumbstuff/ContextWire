@@ -252,6 +252,7 @@ mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }
 /* ---- Git view (PyCharm-style, main area) ---- */
 .gitview { flex: 1; min-height: 0; display: grid; grid-template-rows: auto 0 minmax(0, 1fr); outline: none; }
 .gitview.with-diff { grid-template-rows: auto minmax(160px, 45%) minmax(0, 1fr); }
+.gv-head { grid-row: 1; } .gv-diff { grid-row: 2; } .gv-bottom { grid-row: 3; }
 .gv-head { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--line); background: var(--side); }
 .gv-title { font-weight: 600; }
 .gv-path { color: var(--faint); font: 11px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -312,7 +313,7 @@ mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }
 .drow.change .code { background: #1d2b42; }
 .drow.del .code:nth-child(2), .drow.change .code:nth-child(2) { background: #3a1d22; }
 .drow.add .code:nth-child(4), .drow.change .code:nth-child(4) { background: #183323; }
-.drow.del .code.empty, .drow.add .code.empty { background: repeating-linear-gradient(135deg, transparent 0 6px, #1a1f27 6px 7px); }
+.drow.del .code.blank, .drow.add .code.blank { background: repeating-linear-gradient(135deg, transparent 0 6px, #1a1f27 6px 7px); }
 .drow mark { background: #ffffff26; color: inherit; border-radius: 2px; }
 .drow.gap { color: var(--faint); background: var(--panel); text-align: center; }
 .drow.cur { outline: 1px solid #4c9aff66; }

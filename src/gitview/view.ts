@@ -372,7 +372,7 @@ export class GitView {
       return;
     }
     const cell = (s: Side | null, other: Side | null, side: "a" | "b", kind: string) => {
-      if (!s) return `<span class="ln"></span><span class="code empty"></span>`;
+      if (!s) return `<span class="ln"></span><span class="code blank"></span>`;
       let html = esc(s.text);
       if (kind === "change" && other) {
         const w = wordDiff(side === "a" ? s.text : other.text, side === "a" ? other.text : s.text);

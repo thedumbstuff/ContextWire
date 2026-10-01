@@ -478,29 +478,42 @@ phases:
           - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet gitlog"}
       - id: P8.2
         title: Main-area Git view shell - branches | log | details, opened from the Git panel (Log button)
-        status: pending
+        status: done
         effort: 3
+        why: "Verified 2026-10-01 in the dev build at 1600x950: opens from Log in the Git panel or a commit click, folds the side panel while open and restores it on close; Esc closes."
         depends_on: [P8.1]
+        checks:
+          - {type: path, path: src/gitview/view.ts}
+          - {type: cmd, run: 'findstr /c:"function openLog" src\main.ts'}
       - id: P8.3
         title: Commit graph lanes (branch / merge lines) beside the log
-        status: pending
+        status: done
         effort: 3
         depends_on: [P8.2]
+        checks:
+          - {type: cmd, run: 'findstr /c:"export function computeGraph" src\gitview\model.ts'}
       - id: P8.4
         title: "Log filters bar: Text or hash, Branch, User, Date, Paths; infinite scroll"
-        status: pending
+        status: done
         effort: 2
         depends_on: [P8.2]
+        checks:
+          - {type: cmd, run: 'findstr /c:"gv-filters" src\gitview\view.ts'}
       - id: P8.5
         title: Changed-files tree (folders with counts, status colours) + commit details (message, hash, author <email>, dates, refs, In N branches)
-        status: pending
+        status: done
         effort: 2
         depends_on: [P8.2]
+        checks:
+          - {type: cmd, run: 'findstr /c:"export function buildTree" src\gitview\model.ts'}
       - id: P8.6
         title: Side-by-side diff viewer - line numbers, word highlights, prev/next change, ignore whitespace
-        status: pending
+        status: done
         effort: 3
+        why: "Verified 2026-10-01: side-by-side with line numbers, added/removed/changed colouring, hatched blanks, next/prev change (F7), ignore whitespace; word highlights unit-tested."
         depends_on: [P8.5]
+        checks:
+          - {type: cmd, run: 'findstr /c:"export function wordDiff" src\gitview\model.ts'}
 
 features:
   # ---- ContextWire's own core (why it exists) ----
@@ -522,7 +535,7 @@ features:
   - {id: F17, title: "Git panel: repos newest-first, commits, pull/push, reword unpushed commit", source: own, area: review, status: shipped, task: P7.6, note: "Like the Antigravity git panel"}
   - {id: F18, title: Roadmaps across all projects (watchtower roll-up), source: own, area: workspace, status: shipped, task: P7.7}
   - {id: F19, title: Activity timeline across sessions, source: own, area: status, status: shipped, task: P7.8}
-  - {id: F43, title: "Git view like PyCharm: branches, log graph + filters, files tree, commit details, side-by-side diff", source: own, area: review, status: building, task: P8.6, note: "Read-only; opened from the Git panel"}
+  - {id: F43, title: "Git view like PyCharm: branches, log graph + filters, files tree, commit details, side-by-side diff", source: own, area: review, status: shipped, task: P8.6, note: "Read-only; opened from the Git panel"}
   - {id: F13, title: Search sessions, source: own, area: sessions, status: shipped, task: P5.3}
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
   - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}

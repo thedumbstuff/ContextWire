@@ -101,3 +101,16 @@
   line only shows for projects that declare one. Roadmap: P8 Git view phase;
   P6.1/6.3/6.4/6.5 blocked by decision D6 (deferred - owner on hold), so Next
   up only lists work that is actually wanted.
+- P8 Git view (PyCharm-style, read-only): Log button in the Git panel (or click
+  a commit) opens a main-area tool window - branches tree (HEAD, Local with
+  ahead/behind, Remote by remote), log with commit graph, ref badges, author,
+  hash, relative dates and filters (text or hash, branch, user, date, paths,
+  infinite scroll), changed-files tree (folders with counts, status colours,
+  single-folder chains collapsed like PyCharm), commit details (message, author
+  <email>, dates, refs, "In N branches"), side-by-side diff (line numbers,
+  colours, word highlights, next/previous change, F7, ignore whitespace).
+  The side panel folds while the view is open and comes back on close.
+- Fixed while testing: added-line diff rows broke the grid (CSS class clash),
+  the log had zero height while the diff was hidden (grid rows), the fold for
+  the Git view was saved as a preference, and restarting an unprompted
+  worktree session created yet another worktree.

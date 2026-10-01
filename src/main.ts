@@ -60,7 +60,9 @@ function save() {
   saveTimer = window.setTimeout(() => {
     const data: Persisted = {
       version: 1, roots, sessions: [...sessions.values()], activeId, settings,
-      ui: { ...ui, ...(rail ? rail.state : {}), gitNewestFirst: git ? git.prefs.newestFirst : ui.gitNewestFirst },
+      // folding the panel for the Git view is temporary - save the user's own choice
+      ui: { ...ui, ...(rail ? rail.state : {}), ...(panelBeforeLog !== null ? { collapsed: panelBeforeLog } : {}),
+            gitNewestFirst: git ? git.prefs.newestFirst : ui.gitNewestFirst },
     };
     invoke("store_save", { value: data }).catch((e) => console.error("save", e));
   }, 400);
@@ -246,7 +248,12 @@ function externalReleased(s: Session): boolean {
 }
 
 /** Show the Git view for a repo in the main area (optionally at a commit). */
+let panelBeforeLog: boolean | null = null;
 function openLog(repo: string, hash?: string) {
+  // like PyCharm's Git window the log wants the full width: fold the side panel
+  // while it is open and put it back on close
+  if (panelBeforeLog === null) panelBeforeLog = rail.state.collapsed;
+  if (!rail.state.collapsed) rail.toggle(rail.state.panel);
   void gitView.open(repo, hash);
   renderBar();
   ($("gitview") as HTMLElement).focus();
@@ -254,12 +261,17 @@ function openLog(repo: string, hash?: string) {
 
 function closeLog() {
   gitView.hide();
+  if (panelBeforeLog === false && rail.state.collapsed) rail.toggle(rail.state.panel);
+  panelBeforeLog = null;
   renderBar();
   if (activeId) hosts.get(activeId)?.show();
 }
 
 function select(id: string | null) {
-  if (gitView?.isOpen) gitView.hide();
+  if (gitView?.isOpen) {
+    gitView.hide();
+    panelBeforeLog = null;
+  }
   if (activeId && hosts.has(activeId) && activeId !== id) hosts.get(activeId)!.hide();
   activeId = id;
   const s = id ? sessions.get(id) : undefined;
@@ -363,6 +375,8 @@ function onHook(ev: HookEvent) {
   if (ev.hook_event_name === "SessionStart" && typeof ev.cwd === "string" && ev.cwd && ev.cwd !== s.cwd
       && rootFor(ev.cwd, [s.cwd]) === s.cwd && /[\\/]\.claude[\\/]worktrees[\\/]/i.test(ev.cwd)) {
     s.worktree = basename(ev.cwd);
+    // it now lives in the worktree: starting it again must not create another one
+    s.extraArgs = s.extraArgs?.filter((a) => a !== "--worktree");
     uiLog("info", `session ${s.id.slice(0, 8)} runs in worktree ${s.worktree}`);
     s.cwd = ev.cwd;
   }
