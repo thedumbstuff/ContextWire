@@ -132,3 +132,4 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .gnew { margin-left: auto; background: none; border: 0; padding: 0 4px; color: var(--faint); font-size: 14px; line-height: 1; visibility: hidden; }
 .ghead:hover .gnew { visibility: visible; }
 .gnew:hover { color: var(--accent); }
+.sess.past.live .when { color: var(--st-working); }

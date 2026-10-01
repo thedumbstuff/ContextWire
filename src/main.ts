@@ -150,7 +150,7 @@ function select(id: string | null) {
     h.show();
     if (!s.external && !s.running && s.status === "suspended") void start(s, "resume");
     else if (s.external && !s.running) {
-      h.notice("This session is running in a plain terminal. Close it there, then click \"Adopt here\" to continue it in ContextWire.");
+      h.notice("This session may still be running in a terminal (it was active in the last few minutes). Close it there first, then click \"Adopt here\" to continue it in ContextWire.");
     }
   }
   render();
@@ -330,6 +330,7 @@ async function submitNew(e: Event) {
   await createSession(cwd, ($("newName") as HTMLInputElement).value.trim(), ($("newWorktree") as HTMLInputElement).checked);
 }
 
+const LIVE_ELSEWHERE_MS = 5 * 60 * 1000;
 let pastBusy = false;
 let pastTimer: number | undefined;
 /** Re-read past sessions from ~/.claude/projects (what `claude --resume` lists). */
@@ -388,10 +389,15 @@ function resumePast(id: string) {
   if (!p) return;
   ($("dlgHistory") as HTMLDialogElement).close();
   if (!sessions.has(id)) {
-    sessions.set(id, newSession(id, p.cwd, { autoTitle: firstLine(p.title, 80), status: "suspended", hasTranscript: true, lastEvent: p.modified_ms }));
+    // A transcript written in the last few minutes probably belongs to a claude
+    // still running in some terminal: resuming it here too would put two
+    // processes on one conversation. Open it paused ("Adopt here") instead.
+    const maybeLive = Date.now() - p.modified_ms < LIVE_ELSEWHERE_MS;
+    sessions.set(id, newSession(id, p.cwd, {
+      autoTitle: firstLine(p.title, 80), status: maybeLive ? "idle" : "suspended", hasTranscript: true,
+      lastEvent: p.modified_ms, external: maybeLive, lastMsg: maybeLive ? "may be open in a terminal" : "",
+    }));
   }
-  const s = sessions.get(id)!;
-  if (s.external) s.external = false; // adopting from History
   select(id);
 }
 

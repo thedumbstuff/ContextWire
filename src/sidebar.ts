@@ -105,10 +105,11 @@ export function renderSidebar(el: HTMLElement, m: SidebarModel): void {
       const pastRows = shown
         .map((p) => {
           const sub = [relativeTo(p.cwd, g.root), p.first_prompt && p.first_prompt !== p.title ? p.first_prompt : ""].filter(Boolean).join(" · ");
-          return `<div class="sess past" data-pid="${esc(p.id)}" title="Resume - ${esc(p.cwd)}">
+          const live = now - p.modified_ms < 5 * 60 * 1000;
+          return `<div class="sess past${live ? " live" : ""}" data-pid="${esc(p.id)}" title="${live ? "Active in the last few minutes - may be open in a terminal" : "Resume"} - ${esc(p.cwd)}">
               <span class="resume">⟲</span>
               <div class="txt"><div class="t">${esc(p.title || "(untitled)")}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>
-              <span class="when">${ago(p.modified_ms, now)}</span>
+              <span class="when">${live ? "active" : ago(p.modified_ms, now)}</span>
             </div>`;
         })
         .join("");
