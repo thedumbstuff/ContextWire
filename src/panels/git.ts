@@ -141,9 +141,9 @@ export class GitPanel {
       ].join("");
       const ws = basename(rootFor(r.path, roots));
       const head = `<div class="repo${isOpen ? " open" : ""}" data-repo="${esc(r.path)}" title="${esc(r.path)}">
-          <span class="caret">${isOpen ? "▾" : "▸"}</span>
+          <span class="caret"></span>
           <div class="txt">
-            <div class="t">${live ? `<span class="live" title="a session is running here"></span>` : ""}${esc(r.name)} <span class="branch">${esc(r.detached ? "detached" : r.branch)}</span>${sync}</div>
+            <div class="t">${live ? `<span class="livedot" title="a session is running here"></span>` : ""}${esc(r.name)} <span class="branch">${esc(r.detached ? "detached" : r.branch)}</span>${sync}</div>
             <div class="sub">${r.error ? `<span class="err">${esc(r.error)}</span>` : esc(r.last_commit ? r.last_commit.subject : "no commits yet")}${ws && ws !== r.name ? ` · ${esc(ws)}` : ""}</div>
           </div>
           <span class="when">${r.last_change_ms ? ago(r.last_change_ms, now) : ""}</span>

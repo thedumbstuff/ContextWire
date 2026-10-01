@@ -407,11 +407,20 @@ async function listDirs(path: string): Promise<{ name: string; git: boolean }[]>
   }
 }
 
+/** Workspace of the session in view, else the most recently used one. */
+function recentRoot(): string | undefined {
+  const s = activeId ? sessions.get(activeId) : undefined;
+  if (s) return rootFor(s.cwd, roots);
+  const recent = [...sessions.values()].sort((a, b) => b.lastEvent - a.lastEvent)[0]?.cwd ?? past[0]?.cwd;
+  const r = recent ? rootFor(recent, roots) : undefined;
+  return r && roots.includes(r) ? r : roots[0];
+}
+
 function openNew(prefillCwd?: string, root?: string) {
   const dlg = $("dlgNew") as HTMLDialogElement;
   const sel = $("newRoot") as HTMLSelectElement;
   const cwd = $("newCwd") as HTMLInputElement;
-  const lastRoot = root ? rootFor(root, roots) : (activeId && sessions.get(activeId) ? rootFor(sessions.get(activeId)!.cwd, roots) : roots[0]);
+  const lastRoot = root ? rootFor(root, roots) : recentRoot();
   sel.innerHTML = roots.map((r) => `<option value="${esc(r)}"${r === lastRoot ? " selected" : ""}>${esc(basename(r))} — ${esc(r)}</option>`).join("")
     + `<option value="">Other folder…</option>`;
   cwd.value = prefillCwd ?? root ?? sel.value;

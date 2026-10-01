@@ -86,7 +86,7 @@ export class RoadmapsPanel {
           ${r.tagline ? `<div class="sub">${esc(r.tagline)}</div>` : ""}
           <div class="pbar" title="${r.pct_done}% done (declared), ${wip.toFixed(0)}% in progress"><span class="done" style="width:${r.pct_done}%"></span><span class="wip" style="width:${wip}%"></span></div>
           <div class="rmstats">${r.tasks} tasks · ${r.in_progress.length} in progress · ${r.blocked} blocked${r.open_decisions.length ? ` · <span class="dec">${r.open_decisions.length} open decision${r.open_decisions.length > 1 ? "s" : ""}</span>` : ""}${r.updated ? ` · updated ${esc(r.updated)}` : ""}</div>
-          ${r.in_progress.length ? `<div class="rmsec">In progress</div><ul>${li(r.in_progress.slice(0, 3))}</ul>` : ""}
+          ${r.in_progress.length ? `<div class="rmsec">In progress</div><ul>${li(r.in_progress.slice(0, 3))}${r.in_progress.length > 3 ? `<li class="more">+ ${r.in_progress.length - 3} more - open the dashboard</li>` : ""}</ul>` : ""}
           ${r.next_up.length ? `<div class="rmsec">Next up</div><ul>${li(r.next_up)}</ul>` : ""}
           ${r.open_decisions.length ? `<div class="rmsec">Needs a decision</div><ul>${li(r.open_decisions)}</ul>` : ""}
           <div class="gitbar">

@@ -61,3 +61,12 @@
 - v0.2.0 installed (2026-10-01): tool-window rail + six panels, Edit on every
   unpushed commit. Before this the installed app was still 0.1.1, so after a
   reboot it showed the old single sidebar.
+- UI audit fixes (2026-10-01, every panel + dialog at 1320x840 and 900x600):
+  "active" earlier-session rows were squashed into a green blob (CSS class
+  clash with the git panel's live dot); the panel kept its width on small
+  windows and starved the console (now capped at 45% of the window); the
+  session title vanished from a narrow header; empty-screen buttons wrapped;
+  text arrows rendered as specks (CSS chevrons now); Roadmaps cut "in
+  progress" to 3 silently ("+ N more"); Activity git icon unclear and second
+  line duplicated the name; New session defaulted to the alphabetically first
+  workspace (now the most recently used).

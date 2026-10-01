@@ -25,7 +25,8 @@ code { font-family: var(--mono); font-size: 12px; }
 .spacer { flex: 1; }
 .row { display: flex; gap: 8px; align-items: center; }
 
-.app { display: grid; grid-template-columns: 46px var(--pw, 300px) 4px minmax(0, 1fr); height: 100vh; }
+/* the panel never takes more than 45% of the window, so the console stays usable */
+.app { display: grid; grid-template-columns: 46px clamp(200px, var(--pw, 300px), 45vw) 4px minmax(0, 1fr); height: 100vh; }
 .app.collapsed { grid-template-columns: 46px 0 0 minmax(0, 1fr); }
 .app.collapsed .sidebar, .app.collapsed .splitter { display: none; }
 .rail { grid-column: 1; } .sidebar { grid-column: 2; } .splitter { grid-column: 3; } .main { grid-column: 4; }
@@ -42,7 +43,9 @@ code { font-family: var(--mono); font-size: 12px; }
 .group { margin-bottom: 6px; }
 .ghead { display: flex; align-items: center; gap: 6px; padding: 4px 6px; color: var(--muted); font: 600 11px var(--sans); text-transform: uppercase; letter-spacing: .06em; cursor: pointer; user-select: none; }
 .ghead:hover { color: var(--text); }
-.ghead .caret { width: 10px; }
+/* CSS chevrons (text arrows render as specks at small sizes) */
+.caret { width: 6px; height: 6px; margin: 0 3px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); flex: none; opacity: .8; }
+.group.closed .caret, .repo:not(.open) .caret { transform: rotate(-45deg); }
 .ghead .gname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gneeds, .gunread, .badge { min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px; font: 700 11px/18px var(--sans); text-align: center; color: #fff; text-transform: none; letter-spacing: 0; }
 .gneeds { background: var(--st-needs); } .gunread { background: #2b7a43; }
@@ -135,7 +138,7 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .gnew { margin-left: auto; background: none; border: 0; padding: 0 4px; color: var(--faint); font-size: 14px; line-height: 1; visibility: hidden; }
 .ghead:hover .gnew { visibility: visible; }
 .gnew:hover { color: var(--accent); }
-.sess.past.live .when { color: var(--st-working); }
+.sess.past.recent .when { color: var(--st-working); }
 
 /* ---- tool-window rail (PyCharm style) ---- */
 .rail { background: #0c0f13; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; min-height: 0; }
@@ -162,7 +165,7 @@ button.mini:disabled { opacity: .4; cursor: default; }
 /* ---- git panel ---- */
 .repo { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
 .repo:hover, .repo.open { background: var(--panel); }
-.repo .caret { color: var(--faint); font-size: 10px; }
+.repo .caret { color: var(--muted); justify-self: center; }
 .repo .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 6px; align-items: center; }
 .repo .sub { color: var(--faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .repo .when { color: var(--faint); font-size: 11px; }
@@ -170,7 +173,7 @@ button.mini:disabled { opacity: .4; cursor: default; }
 .ahead { font: 600 11px var(--mono); color: var(--st-working); }
 .behind { font: 600 11px var(--mono); color: #7bb6ff; }
 .dirty { font: 600 11px var(--mono); color: var(--st-needs); }
-.live { width: 7px; height: 7px; border-radius: 50%; background: var(--st-done); flex: none; }
+.livedot { width: 7px; height: 7px; border-radius: 50%; background: var(--st-done); flex: none; }
 .repodetail { margin: 0 0 8px 20px; padding: 6px 0 4px 8px; border-left: 1px solid var(--line); display: grid; gap: 6px; }
 .gitbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .gitnote { font: 11px var(--mono); padding: 4px 6px; border-radius: 4px; white-space: pre-wrap; word-break: break-word; max-height: 6em; overflow: auto; }
@@ -227,3 +230,13 @@ mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }
 .commit .edit { visibility: hidden; }
 .commit:hover .edit, .commit .edit:focus-visible { visibility: visible; }
 .commit .edit.locked { color: var(--muted); }
+
+/* header bar: the title gets the free space and ellipsizes; buttons stay compact */
+.bar .spacer { display: none; }
+.bar-title { flex: 1 1 0; min-width: 80px; }
+.bar button { white-space: nowrap; flex: none; }
+.empty .row { flex-wrap: wrap; }
+.empty .row button { white-space: nowrap; }
+.rm li.more { color: var(--faint); list-style: none; margin-left: -14px; font-size: 11px; }
+.act .ico svg { vertical-align: -2px; }
+.act.k-needs .ico { font-weight: 700; }

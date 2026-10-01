@@ -14,8 +14,9 @@ export interface ActivityItem {
 }
 
 const MAX = 500;
+const GIT_ICON = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-11.2 6.6"/></svg>`;
 const ICON: Record<string, string> = {
-  done: "✓", needs: "⚠", start: "▶", end: "■", exit: "■", git: "⎇", "git-error": "✕",
+  done: "✓", needs: "!", start: "▶", end: "■", exit: "■", git: GIT_ICON, "git-error": "✕",
 };
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -95,7 +96,7 @@ export class ActivityPanel {
       const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
       return `${head}<div class="act k-${esc(it.kind)}${it.t > this.seenAt ? " new" : ""}" data-i="${i}" title="${esc(it.cwd)}">
           <span class="ico">${ICON[it.kind] ?? "·"}</span>
-          <div class="txt"><div class="t">${esc(it.text)}</div><div class="sub">${esc(basename(it.cwd))}</div></div>
+          <div class="txt"><div class="t">${esc(it.text)}</div>${it.text.includes(basename(it.cwd)) ? "" : `<div class="sub">${esc(basename(it.cwd))}</div>`}</div>
           <span class="when">${esc(time)}</span>
         </div>`;
     }).join("");

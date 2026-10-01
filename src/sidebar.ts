@@ -36,7 +36,7 @@ export function sessionRow(s: Session, root: string, activeId: string | null, no
 function pastRow(p: PastSession, root: string, now: number): string {
   const live = now - p.modified_ms < 5 * 60 * 1000;
   const sub = [relativeTo(p.cwd, root), p.first_prompt && p.first_prompt !== p.title ? p.first_prompt : ""].filter(Boolean).join(" · ");
-  return `<div class="sess past${live ? " live" : ""}" data-pid="${esc(p.id)}" title="${live ? "Active in the last few minutes - may be open in a terminal" : "Resume"} - ${esc(p.cwd)}">
+  return `<div class="sess past${live ? " recent" : ""}" data-pid="${esc(p.id)}" title="${live ? "Active in the last few minutes - may be open in a terminal" : "Resume"} - ${esc(p.cwd)}">
       <span class="resume">⟲</span>
       <div class="txt"><div class="t">${esc(p.title || "(untitled)")}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>
       <span class="when">${live ? "active" : ago(p.modified_ms, now)}</span>
@@ -171,7 +171,7 @@ export function renderSidebar(el: HTMLElement, m: SidebarModel): void {
       const counts = (g.needs ? `<span class="gneeds">${g.needs}</span>` : "") + (g.unread ? `<span class="gunread">${g.unread}</span>` : "");
       return `<section class="group${closed ? " closed" : ""}">
           <div class="ghead" data-root="${esc(g.root)}" title="${esc(g.root)}">
-            <span class="caret">${closed ? "▸" : "▾"}</span><span class="gname">${esc(basename(g.root))}</span>${counts}
+            <span class="caret"></span><span class="gname">${esc(basename(g.root))}</span>${counts}
             <button class="gnew" data-newroot="${esc(g.root)}" title="New session in ${esc(basename(g.root))}">＋</button>
           </div>
           <div class="gbody">${body}</div>
