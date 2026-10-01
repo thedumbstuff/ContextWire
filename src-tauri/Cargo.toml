@@ -2,6 +2,7 @@
 name = "contextwire"
 version = "0.1.1"
 description = "One window for every Claude Code console"
+license = "MIT"
 authors = ["Shwetank"]
 edition = "2021"
 
