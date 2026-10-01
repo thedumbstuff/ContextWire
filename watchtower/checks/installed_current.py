@@ -28,8 +28,9 @@ def newest_source() -> tuple[float, Path]:
 
 def main() -> int:
     if not INSTALLED.exists():
-        print(f"not installed: {INSTALLED}")
-        return 1
+        # a contributor's machine without the app installed: nothing to compare
+        print(f"skipped: ContextWire is not installed on this machine ({INSTALLED})")
+        return 0
     if not BUILT.exists():
         print("no release build: run npm run tauri build")
         return 1

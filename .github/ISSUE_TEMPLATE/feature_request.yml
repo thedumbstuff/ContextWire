@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an idea or a feature from the official Claude desktop app worth adopting
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like ContextWire to do?
+  - type: input
+    id: roadmap
+    attributes:
+      label: Related roadmap task or feature id (if any)
+      description: See roadmap.yaml (e.g. P6.3 or F24)
