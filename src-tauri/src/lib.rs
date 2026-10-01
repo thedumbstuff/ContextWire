@@ -1,6 +1,8 @@
 #[macro_use]
 pub mod applog;
 pub mod claudecfg;
+pub mod cron;
+pub mod secrets;
 pub mod gitlog;
 pub mod gitops;
 pub mod hook;
