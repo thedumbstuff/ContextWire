@@ -8,19 +8,37 @@
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
-    <div class="app">
-      <aside class="sidebar">
+    <div class="app" id="app">
+      <nav class="rail" id="rail" aria-label="Tool windows"></nav>
+
+      <aside class="sidebar" id="panel">
         <div class="brand">
           <span class="logo">◆</span><span class="name">ContextWire</span>
           <span class="spacer"></span>
           <button class="icon" id="btnHistory" title="History - resume a past session (Ctrl+Shift+H)">⟲</button>
-          <button class="icon" id="btnSettings" title="Settings">⚙</button>
         </div>
         <div class="summary" id="summary"></div>
-        <input id="search" type="search" placeholder="Search sessions" autocomplete="off" />
-        <div class="groups" id="groups"></div>
+        <div class="ptitle"><span id="panelTitle"></span><span class="spacer"></span><span class="pactions" id="panelActions"></span></div>
+
+        <section class="pane" id="pane-active"><div class="groups" id="activeList"></div></section>
+        <section class="pane" id="pane-all">
+          <input id="search" type="search" placeholder="Filter sessions" autocomplete="off" />
+          <div class="groups" id="groups"></div>
+        </section>
+        <section class="pane" id="pane-git">
+          <input id="gitFilter" type="search" placeholder="Filter repos" autocomplete="off" />
+          <div class="groups" id="gitList"></div>
+        </section>
+        <section class="pane" id="pane-roadmaps"><div class="groups" id="roadmapList"></div></section>
+        <section class="pane" id="pane-activity"><div class="groups" id="activityList"></div></section>
+        <section class="pane" id="pane-search">
+          <input id="tsearch" type="search" placeholder="Search every conversation (2+ letters)" autocomplete="off" />
+          <div class="groups" id="searchList"></div>
+        </section>
+
         <button class="primary new" id="btnNew">＋ New session <kbd>Ctrl+Shift+N</kbd></button>
       </aside>
+      <div class="splitter" id="splitter" title="Drag to resize"></div>
 
       <main class="main">
         <header class="bar hidden" id="bar">
@@ -95,6 +113,24 @@
         <div class="row"><button type="button" id="setDiag">Copy diagnostics</button><button type="button" id="setLogs">Open logs folder</button></div>
         <p class="muted small" id="setInfo"></p>
         <div class="actions"><button class="primary" value="ok">Done</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="dlgReword">
+      <form method="dialog" class="dlg">
+        <h3>Edit commit message</h3>
+        <p class="muted small" id="rewordInfo"></p>
+        <textarea id="rewordText" rows="6" spellcheck="true"></textarea>
+        <div class="err" id="rewordErr"></div>
+        <div class="actions"><button type="button" data-close>Cancel</button><button class="primary" id="rewordGo" type="button">Save message</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="dlgConfirm">
+      <form method="dialog" class="dlg">
+        <h3 id="confirmTitle"></h3>
+        <p id="confirmText"></p>
+        <div class="actions"><button type="button" data-close>Cancel</button><button class="primary" value="ok">OK</button></div>
       </form>
     </dialog>
 

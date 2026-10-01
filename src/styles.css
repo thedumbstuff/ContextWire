@@ -25,7 +25,9 @@ code { font-family: var(--mono); font-size: 12px; }
 .spacer { flex: 1; }
 .row { display: flex; gap: 8px; align-items: center; }
 
-.app { display: grid; grid-template-columns: 300px minmax(0, 1fr); height: 100vh; }
+.app { display: grid; grid-template-columns: 46px var(--pw, 300px) 4px minmax(0, 1fr); height: 100vh; }
+.app.collapsed { grid-template-columns: 46px 0 0 minmax(0, 1fr); }
+.app.collapsed .sidebar, .app.collapsed .splitter { display: none; }
 
 /* ---- sidebar ---- */
 .sidebar { background: var(--side); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 10px 8px; gap: 8px; }
@@ -118,7 +120,7 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .rootrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rootrow button { padding: 2px 8px; font-size: 11px; }
 
-@media (max-width: 900px) { .app { grid-template-columns: 240px minmax(0, 1fr); } }
+
 
 /* ---- earlier (resumable) sessions inside each workspace ---- */
 .pasthead { color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding: 6px 8px 2px 22px; }
@@ -133,3 +135,90 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .ghead:hover .gnew { visibility: visible; }
 .gnew:hover { color: var(--accent); }
 .sess.past.live .when { color: var(--st-working); }
+
+/* ---- tool-window rail (PyCharm style) ---- */
+.rail { background: #0c0f13; border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; min-height: 0; }
+.rtab { position: relative; width: 36px; height: 36px; display: grid; place-items: center; padding: 0; background: transparent; border: 0; border-radius: 8px; color: var(--faint); }
+.rtab:hover { color: var(--text); background: var(--panel); border: 0; }
+.rtab.on { color: var(--text); background: var(--panel2); box-shadow: inset 2px 0 0 var(--accent); }
+.rbadge { position: absolute; top: 1px; right: 0; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; font: 700 10px/15px var(--sans); color: #fff; display: none; }
+.rbadge.needs { display: block; background: var(--st-needs); }
+.rbadge.unread { display: block; background: #2b7a43; }
+.rbadge.info { display: block; background: #2b65b3; }
+.splitter { cursor: col-resize; background: transparent; border-right: 1px solid var(--line); }
+.splitter:hover, body.resizing .splitter { background: #2b65b355; }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing .terms { pointer-events: none; }
+.ptitle { display: flex; align-items: center; gap: 6px; padding: 2px 4px 0; font: 600 11px var(--sans); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.pactions { display: flex; gap: 4px; text-transform: none; letter-spacing: 0; }
+.pane { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+button.mini { padding: 2px 8px; font-size: 11px; border-radius: 5px; }
+button.mini:disabled { opacity: .4; cursor: default; }
+.subhead { display: flex; align-items: center; gap: 6px; padding: 8px 8px 2px 22px; color: var(--muted); font: 600 11px var(--sans); }
+.subhead span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subhead:hover .gnew { visibility: visible; }
+
+/* ---- git panel ---- */
+.repo { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+.repo:hover, .repo.open { background: var(--panel); }
+.repo .caret { color: var(--faint); font-size: 10px; }
+.repo .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 6px; align-items: center; }
+.repo .sub { color: var(--faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.repo .when { color: var(--faint); font-size: 11px; }
+.branch { font: 11px var(--mono); color: var(--accent); }
+.ahead { font: 600 11px var(--mono); color: var(--st-working); }
+.behind { font: 600 11px var(--mono); color: #7bb6ff; }
+.dirty { font: 600 11px var(--mono); color: var(--st-needs); }
+.live { width: 7px; height: 7px; border-radius: 50%; background: var(--st-done); flex: none; }
+.repodetail { margin: 0 0 8px 20px; padding: 6px 0 4px 8px; border-left: 1px solid var(--line); display: grid; gap: 6px; }
+.gitbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.gitnote { font: 11px var(--mono); padding: 4px 6px; border-radius: 4px; white-space: pre-wrap; word-break: break-word; max-height: 6em; overflow: auto; }
+.gitnote.ok { background: #14261a; color: #8fd9a3; }
+.gitnote.err, .err.small { background: #2a1719; color: #f3a3a1; }
+.gitsess { display: flex; flex-wrap: wrap; gap: 4px; }
+.gitsess .chip { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; background: var(--panel2); border: 1px solid var(--line); }
+.gitsess .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--st-idle); }
+.commits { display: grid; gap: 1px; }
+.commit { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 5px; }
+.commit:hover { background: var(--panel); }
+.commit .hash { font: 11px var(--mono); color: var(--faint); }
+.commit.local .hash { color: var(--st-working); }
+.commit .t { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.commit .sub { color: var(--faint); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#gitFilter, #search, #tsearch { flex: none; }
+textarea { font: 13px var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; width: 100%; resize: vertical; }
+
+/* ---- roadmaps ---- */
+.rm { padding: 9px 8px 10px; border-bottom: 1px solid var(--line); display: grid; gap: 5px; }
+.rmhead { display: flex; align-items: baseline; gap: 6px; }
+.rm .pct { font: 600 12px var(--mono); color: var(--st-done); }
+.rm .sub { color: var(--faint); font-size: 11px; }
+.pbar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--panel2); }
+.pbar .done { background: var(--st-done); }
+.pbar .wip { background: var(--st-working); }
+.rmstats { color: var(--muted); font-size: 11px; }
+.rmstats .dec { color: var(--st-needs); }
+.rmsec { color: var(--faint); font: 600 10px var(--sans); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+.rm ul { margin: 0; padding-left: 14px; font-size: 12px; display: grid; gap: 1px; }
+.rm li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rid { font: 10.5px var(--mono); color: var(--faint); }
+
+/* ---- activity ---- */
+.act { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+.act:hover { background: var(--panel); }
+.act .ico { text-align: center; font-size: 12px; color: var(--faint); }
+.act .t { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act .sub, .act .when { color: var(--faint); font-size: 11px; }
+.act.new .t { color: #fff; font-weight: 600; }
+.act.k-done .ico { color: var(--st-done); }
+.act.k-needs .ico, .act.k-git-error .ico { color: var(--st-needs); }
+.act.k-git .ico, .act.k-start .ico { color: var(--accent); }
+
+/* ---- search ---- */
+.hitcard { padding: 8px; border-radius: 8px; cursor: pointer; display: grid; gap: 3px; }
+.hitcard:hover { background: var(--panel); }
+.hitcard .t { font-weight: 600; font-size: 12.5px; }
+.hitcard .sub { color: var(--faint); font-size: 11px; }
+.snip { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.snip .role { font: 600 10px var(--sans); text-transform: uppercase; color: var(--faint); margin-right: 6px; }
+mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }

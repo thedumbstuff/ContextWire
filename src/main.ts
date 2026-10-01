@@ -6,7 +6,12 @@ import { enable as autostartOn, disable as autostartOff, isEnabled as autostartI
 
 import type { AppInfo, HookEvent, PastSession, Persisted, Session, Settings } from "./types";
 import { TermHost } from "./terminal";
-import { displayName, renderSidebar, STATUS_LABEL } from "./sidebar";
+import { displayName, renderActive, renderSidebar, STATUS_LABEL } from "./sidebar";
+import { Rail, type PanelId, type RailState } from "./rail";
+import { GitPanel } from "./panels/git";
+import { RoadmapsPanel } from "./panels/roadmaps";
+import { ActivityPanel } from "./panels/activity";
+import { SearchPanel, type SessionHits } from "./panels/search";
 import { ago, applyHook, basename, firstLine, relativeTo, rootFor, topLevel } from "./status";
 
 // ---------------------------------------------------------------- state
@@ -30,6 +35,12 @@ const collapsed = new Set<string>();
 const pastExpanded = new Set<string>();
 let past: PastSession[] = []; // transcripts on disk, newest first (refreshed in the background)
 let notifyOk = false;
+let ui: RailState & { gitNewestFirst?: boolean } = { panel: "active", collapsed: false, width: 300, gitNewestFirst: true };
+let rail: Rail;
+let git: GitPanel;
+let roadmapsPanel: RoadmapsPanel;
+let activity: ActivityPanel;
+let searchPanel: SearchPanel;
 
 function newSession(id: string, cwd: string, patch: Partial<Session> = {}): Session {
   const now = Date.now();
@@ -45,7 +56,10 @@ let saveTimer: number | undefined;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = window.setTimeout(() => {
-    const data: Persisted = { version: 1, roots, sessions: [...sessions.values()], activeId, settings };
+    const data: Persisted = {
+      version: 1, roots, sessions: [...sessions.values()], activeId, settings,
+      ui: { ...ui, ...(rail ? rail.state : {}), gitNewestFirst: git ? git.prefs.newestFirst : ui.gitNewestFirst },
+    };
     invoke("store_save", { value: data }).catch((e) => console.error("save", e));
   }, 400);
 }
@@ -55,6 +69,7 @@ async function load() {
   if (data && data.version === 1) {
     roots = data.roots ?? [];
     settings = { ...settings, ...(data.settings ?? {}) };
+    ui = { ...ui, ...(data.ui ?? {}) };
     // after an app restart nothing runs (every session is resumable); after a
     // UI reload the Rust side may still own live consoles - re-attach to those
     const alive = new Set<string>(await invoke("sessions_running"));
@@ -74,12 +89,88 @@ function isVisible(id: string): boolean {
 }
 
 function render() {
+  const all = [...sessions.values()];
+  renderActive($("activeList"), all, roots, activeId);
   renderSidebar($("groups"), {
-    sessions: [...sessions.values()], past, roots, activeId,
+    sessions: all, past, roots, activeId,
     filter: ($("search") as HTMLInputElement).value, collapsed, pastExpanded,
   });
+  if (rail && rail.state.panel === "git" && !rail.state.collapsed) git.render(); // live "session here" dots
   renderSummary();
   renderBar();
+  if (rail) {
+    const c = counts();
+    if (c.needs) rail.badge("active", String(c.needs), "needs");
+    else rail.badge("active", c.unread ? String(c.unread) : "", "unread");
+  }
+}
+
+// ---------------------------------------------------------------- tool windows
+
+function panelOf(id: PanelId): { actions(): string; onAction(a: string): boolean } | null {
+  return id === "git" ? git : id === "roadmaps" ? roadmapsPanel : id === "activity" ? activity : null;
+}
+
+function onPanelChange(st: RailState, opened: PanelId | null) {
+  ui = { ...ui, ...st };
+  $("panelActions").innerHTML = panelOf(st.panel)?.actions() ?? "";
+  if (opened === "git") void git.load();
+  if (opened === "roadmaps") void roadmapsPanel.load();
+  if (opened === "activity") { activity.markSeen(); activity.render(); }
+  if (opened === "search") { searchPanel.render(); searchPanel.focus(); }
+  if (opened === "active" || opened === "all") render();
+  save();
+}
+
+/** OK/Cancel in the app's own dialog (browser confirm() would block the webview). */
+function confirmDialog(title: string, text: string): Promise<boolean> {
+  const dlg = $("dlgConfirm") as HTMLDialogElement;
+  $("confirmTitle").textContent = title;
+  $("confirmText").textContent = text;
+  dlg.returnValue = "";
+  dlg.showModal();
+  return new Promise((res) => dlg.addEventListener("close", () => res(dlg.returnValue === "ok"), { once: true }));
+}
+
+function openSearchHit(r: SessionHits) {
+  if (sessions.has(r.id)) return select(r.id);
+  if (!past.some((p) => p.id === r.id)) {
+    past.push({ id: r.id, cwd: r.cwd, title: r.title, first_prompt: "", modified_ms: r.modified_ms, size: 0 });
+  }
+  resumePast(r.id);
+}
+
+function setupPanels() {
+  rail = new Rail({ panel: ui.panel, collapsed: ui.collapsed, width: ui.width }, (st, opened) => {
+    if (git) onPanelChange(st, opened);
+  });
+  git = new GitPanel({
+    roots: () => roots,
+    sessions: () => [...sessions.values()],
+    select: (id) => select(id),
+    newSessionIn: (cwd) => openNew(undefined, cwd),
+    confirm: confirmDialog,
+    log: uiLog,
+    activity: (kind, text, cwd) => activity.add(kind, text, cwd),
+  }, { newestFirst: ui.gitNewestFirst });
+  roadmapsPanel = new RoadmapsPanel({ roots: () => roots, newSessionIn: (cwd) => openNew(undefined, cwd), log: uiLog });
+  activity = new ActivityPanel(
+    (it) => {
+      if (it.sid && sessions.has(it.sid)) select(it.sid);
+      else if (it.sid && past.some((p) => p.id === it.sid)) resumePast(it.sid);
+    },
+    (n) => rail.badge("activity", n ? String(n) : "", "info"),
+  );
+  searchPanel = new SearchPanel(() => roots, openSearchHit);
+  $("panelActions").onclick = (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-pa]");
+    const p = panelOf(rail.state.panel);
+    if (b && p && p.onAction(b.dataset.pa!)) { $("panelActions").innerHTML = p.actions(); save(); }
+  };
+  $("activeList").onclick = (e) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>(".sess");
+    if (row?.dataset.id) select(row.dataset.id);
+  };
 }
 
 function counts() {
@@ -186,6 +277,7 @@ async function start(s: Session, mode: "new" | "resume", extra: string[] = []) {
     await invoke("session_spawn", { id: s.id, cwd: s.cwd, args, cols, rows });
     s.running = true;
     if (resume) h.notice(`resumed ${s.id.slice(0, 8)} in ${s.cwd}`);
+    activity.add("start", `${displayName(s)} ${resume ? "resumed" : "started"}`, s.cwd, s.id);
   } catch (e) {
     s.status = "exited";
     h.notice(`could not start claude: ${e}`);
@@ -245,6 +337,10 @@ function onHook(ev: HookEvent) {
   if (t.unread) s.unread += 1;
   s.lastEvent = Date.now();
   if (t.notify) notify(s, t.notify);
+  const name = displayName(s);
+  if (ev.hook_event_name === "Stop") activity.add("done", `${name} finished`, s.cwd, s.id);
+  else if (t.status === "needs") activity.add("needs", `${name} needs you${t.msg ? ": " + t.msg : ""}`, s.cwd, s.id);
+  else if (ev.hook_event_name === "SessionEnd") activity.add("end", `${name} ended`, s.cwd, s.id);
   if (ev.hook_event_name === "Stop" || ev.hook_event_name === "SessionEnd") refreshPastSoon();
   render();
   save();
@@ -279,6 +375,7 @@ async function wireEvents() {
     s.running = false;
     s.status = "exited";
     s.lastMsg = e.payload.code ? `exited with code ${e.payload.code}` : "session ended";
+    if (e.payload.code) activity.add("exit", `${displayName(s)} exited with code ${e.payload.code}`, s.cwd, s.id);
     s.lastEvent = Date.now();
     hosts.get(s.id)?.notice(`claude exited${e.payload.code ? ` (code ${e.payload.code})` : ""} · click Resume to continue`);
     render();
@@ -314,14 +411,14 @@ function openNew(prefillCwd?: string, root?: string) {
   const dlg = $("dlgNew") as HTMLDialogElement;
   const sel = $("newRoot") as HTMLSelectElement;
   const cwd = $("newCwd") as HTMLInputElement;
-  const lastRoot = root ?? (activeId && sessions.get(activeId) ? rootFor(sessions.get(activeId)!.cwd, roots) : roots[0]);
+  const lastRoot = root ? rootFor(root, roots) : (activeId && sessions.get(activeId) ? rootFor(sessions.get(activeId)!.cwd, roots) : roots[0]);
   sel.innerHTML = roots.map((r) => `<option value="${esc(r)}"${r === lastRoot ? " selected" : ""}>${esc(basename(r))} — ${esc(r)}</option>`).join("")
     + `<option value="">Other folder…</option>`;
   cwd.value = prefillCwd ?? root ?? sel.value;
   ($("newName") as HTMLInputElement).value = "";
   ($("newWorktree") as HTMLInputElement).checked = false;
   $("newErr").textContent = "";
-  void fillRepos(sel.value);
+  void fillRepos(lastRoot && roots.includes(lastRoot) ? lastRoot : sel.value);
   dlg.showModal();
   cwd.focus();
 }
@@ -623,6 +720,7 @@ function bindUi() {
       n: () => openNew(),
       h: () => void openHistory(),
       u: () => { const s = nextAttention(); if (s) select(s.id); },
+      f: () => rail.show("search"),
     };
     if (act[k]) { e.preventDefault(); e.stopPropagation(); act[k](); }
   }, true);
@@ -633,9 +731,11 @@ function bindUi() {
 
 async function main() {
   uiLog("info", "ui starting");
-  bindUi();
   info = await invoke("app_info");
   await load();
+  setupPanels();
+  bindUi();
+  await activity.load();
   await seedRoots();
   await refreshPast(); // select() below needs transcript times for the open-elsewhere check
   await wireEvents();
