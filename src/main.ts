@@ -341,9 +341,20 @@ function onHook(ev: HookEvent) {
   if (t.hasTranscript) s.hasTranscript = true;
   if (t.unread) s.unread += 1;
   s.lastEvent = Date.now();
-  if (t.notify) notify(s, t.notify);
   const name = displayName(s);
-  if (ev.hook_event_name === "Stop") activity.add("done", `${name} finished`, s.cwd, s.id);
+  if (ev.hook_event_name === "Stop" && typeof ev.transcript_path === "string") {
+    // show what Claude actually said; the toast waits for it (max ~1 s)
+    const sess = s;
+    const kind = t.notify;
+    void freshReply(sess.id, ev.transcript_path).then((reply) => {
+      if (reply) sess.lastMsg = "claude: " + reply;
+      activity.add("done", `${name} finished${reply ? ": " + reply : ""}`, sess.cwd, sess.id);
+      if (kind) notify(sess, kind);
+      render();
+      save();
+    });
+  } else if (t.notify) notify(s, t.notify);
+  if (ev.hook_event_name === "Stop" && typeof ev.transcript_path !== "string") activity.add("done", `${name} finished`, s.cwd, s.id);
   else if (t.status === "needs") activity.add("needs", `${name} needs you${t.msg ? ": " + t.msg : ""}`, s.cwd, s.id);
   else if (ev.hook_event_name === "SessionEnd") activity.add("end", `${name} ended`, s.cwd, s.id);
   if (ev.hook_event_name === "Stop" || ev.hook_event_name === "SessionEnd") refreshPastSoon();
@@ -361,6 +372,29 @@ function notify(s: Session, kind: "needs" | "done") {
     title: kind === "needs" ? `⚠ ${displayName(s)} needs you` : `✓ ${displayName(s)} is done`,
     body: `${where}${s.lastMsg ? " · " + s.lastMsg : ""}`,
   });
+}
+
+/** Last reply seen per session, to tell a fresh reply from the previous turn's. */
+const lastReplies = new Map<string, string>();
+
+/** Claude writes the final reply to the transcript a moment *after* the Stop
+ *  hook fires, so poll briefly until a reply different from the last one shows
+ *  up (about 3 s at most). Returns null if nothing new appeared. */
+async function freshReply(id: string, path: string): Promise<string | null> {
+  const before = lastReplies.get(id);
+  for (let i = 0; i < 8; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 300 : 400));
+    const reply = await withTimeout(invoke<string | null>("last_reply", { path }), 1000);
+    if (reply && reply !== before) {
+      lastReplies.set(id, reply);
+      return reply;
+    }
+  }
+  return null;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), ms))]);
 }
 
 function decode(b64: string): Uint8Array {
@@ -386,7 +420,14 @@ async function wireEvents() {
     render();
     save();
   });
-  await listen<HookEvent>("hook-event", (e) => onHook(e.payload));
+  // errors inside event callbacks are swallowed by the event system - log them
+  await listen<HookEvent>("hook-event", (e) => {
+    try {
+      onHook(e.payload);
+    } catch (err) {
+      uiLog("error", `hook handler (${e.payload.hook_event_name}): ${err instanceof Error ? err.stack ?? err.message : err}`);
+    }
+  });
 
   // looking at the window = reading the active chat
   window.addEventListener("focus", () => {

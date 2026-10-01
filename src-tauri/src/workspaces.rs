@@ -52,6 +52,32 @@ fn prompt_text(rec: &Value) -> Option<String> {
     Some(t.chars().take(160).collect())
 }
 
+/// First line of the last assistant text in a transcript (reads only the tail).
+/// Used for the "claude: ..." activity line when a turn finishes.
+pub fn last_reply(path: &Path) -> Option<String> {
+    let mut f = File::open(path).ok()?;
+    let size = f.metadata().ok()?.len();
+    let tail = read_range(&mut f, size.saturating_sub(TAIL_BYTES), TAIL_BYTES);
+    tail.lines().rev().find_map(|line| {
+        let rec: Value = serde_json::from_str(line).ok()?;
+        if rec["type"] != "assistant" {
+            return None;
+        }
+        let text = rec["message"]["content"].as_array()?.iter().rev().find_map(|b| (b["type"] == "text").then(|| b["text"].as_str().unwrap_or("")))?;
+        let first = text.lines().map(str::trim).find(|l| !l.is_empty())?;
+        let clean: String = first.trim_start_matches(['#', '*', '-', '>', ' ']).replace("**", "").replace('`', "");
+        Some(clean.chars().take(160).collect())
+    })
+}
+
+/// True when `path` is a transcript inside `root` (canonicalised; no traversal).
+pub fn is_transcript_in(path: &Path, root: &Path) -> bool {
+    match (path.canonicalize(), root.canonicalize()) {
+        (Ok(p), Ok(r)) => p.starts_with(r) && p.extension().map_or(false, |x| x == "jsonl"),
+        _ => false,
+    }
+}
+
 pub fn read_session(path: &Path) -> Option<PastSession> {
     let meta = std::fs::metadata(path).ok()?;
     let id = path.file_stem()?.to_string_lossy().to_string();
@@ -171,6 +197,26 @@ mod tests {
         assert_eq!(decode_project_dir(&enc), Some(target.clone()));
         assert_eq!(decode_project_dir("C--definitely-not-a-real-folder-xyz"), None);
         assert_eq!(decode_project_dir("no-drive"), None);
+    }
+
+    #[test]
+    fn last_reply_takes_the_final_assistant_text() {
+        let root = std::env::temp_dir().join(format!("cw-reply-{}", uuid::Uuid::new_v4()));
+        let dir = root.join("C--x");
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("s.jsonl");
+        let lines = [
+            r#"{"type":"assistant","message":{"content":[{"type":"text","text":"old answer"}]}}"#,
+            r#"{"type":"user","message":{"content":"next question"}}"#,
+            r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash"}]}}"#,
+            r#"{"type":"assistant","message":{"content":[{"type":"text","text":"\n## **Fixed** the `login` bug\nmore detail"}]}}"#,
+            r#"{"type":"system","subtype":"turn_duration"}"#,
+        ];
+        std::fs::write(&p, lines.join("\n")).unwrap();
+        assert_eq!(last_reply(&p).as_deref(), Some("Fixed the login bug"));
+        assert!(is_transcript_in(&p, &root));
+        assert!(!is_transcript_in(&root.join("..").join("x.jsonl"), &root));
+        assert!(!is_transcript_in(Path::new("C:/Windows/win.ini"), &root));
     }
 
     #[test]

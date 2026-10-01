@@ -288,10 +288,13 @@ phases:
         why: "Sidebar search (name/folder/last activity) and History filter."
         depends_on: [P4.3]
       - id: P5.4
-        title: Per-session last-activity preview line in the sidebar (last prompt / last Claude summary)
-        status: pending
+        title: "Per-session last-activity line: last prompt while working, first line of Claude's reply when done (also in toasts and Activity)"
+        status: done
         effort: 2
         depends_on: [P2.4]
+        why: "Verified 2026-10-01 with a real turn from the background: row shows 'claude: <reply>', unread badge, Activity entry. Claude writes the reply a moment after the Stop hook, so the app polls the transcript tail for up to ~3 s."
+        checks:
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet last_reply"}
 
       - id: P5.5
         title: "Troubleshooting: rotating log file (hook events, status changes, console start/exit, errors) + Copy diagnostics / Open logs in Settings"
@@ -334,6 +337,7 @@ phases:
         title: Split view - two consoles side by side
         status: pending
         effort: 3
+        why: "On hold - owner said not to pick this up (2026-10-01)."
         depends_on: [P1.2]
       - id: P6.2
         title: Worktree isolation option when starting a session (claude --worktree)
@@ -345,18 +349,20 @@ phases:
         title: Diff pane - git diff of the session's folder, refreshed on Stop
         status: pending
         effort: 3
+        why: "On hold - owner said not to pick this up (2026-10-01)."
         depends_on: [P2.4]
       - id: P6.4
         title: Plain shell pane per session (second PTY in the session folder)
         status: pending
         effort: 2
+        why: "On hold - owner said not to pick this up (2026-10-01)."
         depends_on: [P1.1]
       - id: P6.5
         title: Chat-bubble view (Agent SDK / stream-json) as an alternative to the raw console
         status: pending
         effort: 5
         depends_on: [P2.4]
-        why: Big job; only worth it after daily use shows the console view is limiting.
+        why: "On hold - owner said not to pick this up (2026-10-01)."
 
   - id: P7
     name: Tool windows (PyCharm-style left rail)
@@ -453,7 +459,7 @@ features:
   - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: building, task: P4.4, note: "The official app cannot see a running terminal session at all"}
   - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: planned, task: P3.5}
   - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: shipped, task: P5.2}
-  - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
+  - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: shipped, task: P5.4}
   - {id: F14, title: Earlier sessions listed inside every workspace with one-click resume, source: own, area: workspace, status: shipped, task: P4.5, note: "Like claude --resume, but for every workspace at once; guards against resuming a session still open in a terminal"}
   - {id: F15, title: "Troubleshooting: log file, Copy diagnostics, Open logs folder", source: own, area: other, status: shipped, task: P5.5, note: "Logs never contain prompts or conversation text"}
   - {id: F16, title: "PyCharm-style tool windows: Active, All Sessions, Git, Roadmaps, Activity, Search", source: own, area: sessions, status: shipped, task: P7.1}

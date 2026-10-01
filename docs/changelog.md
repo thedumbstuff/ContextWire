@@ -71,3 +71,10 @@
   line duplicated the name; New session defaulted to the alphabetically first
   workspace (now the most recently used).
 - v0.2.1 installed with the UI audit fixes.
+- P5.2 shortcuts: Ctrl+1..9 / Ctrl+Tab move between sessions in Active-panel
+  order; shortcut list in Settings. Repo chips use a drawn branch icon.
+- P5.4 last-activity line: rows, toasts and Activity show the first line of
+  Claude's reply when a turn finishes ("claude: ..."). The reply lands in the
+  transcript a moment after the Stop hook, so the app polls for up to ~3 s.
+  Hook-event handler errors are now logged instead of silently swallowed.
+- P6.1 / P6.3 / P6.4 / P6.5 on hold at the owner's request.

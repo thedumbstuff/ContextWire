@@ -68,6 +68,7 @@ export interface HookEvent {
   message?: string;
   notification_type?: string;
   tool_name?: string;
+  transcript_path?: string;
   cw_tab?: string;
   [k: string]: unknown;
 }

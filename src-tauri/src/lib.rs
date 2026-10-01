@@ -171,6 +171,21 @@ async fn past_sessions(limit: Option<usize>) -> Vec<workspaces::PastSession> {
     workspaces::scan(&workspaces::projects_dir(), limit.unwrap_or(300))
 }
 
+/// First line of Claude's last reply, from a transcript under ~/.claude/projects.
+#[tauri::command]
+async fn last_reply(path: String) -> Option<String> {
+    let p = PathBuf::from(&path);
+    if !workspaces::is_transcript_in(&p, &workspaces::projects_dir()) {
+        warn!("last_reply: {path} is not a transcript under ~/.claude/projects");
+        return None;
+    }
+    let r = workspaces::last_reply(&p);
+    if r.is_none() {
+        warn!("last_reply: no assistant text found in {path}");
+    }
+    r
+}
+
 #[tauri::command]
 async fn project_folders() -> Vec<String> {
     workspaces::project_folders(&workspaces::projects_dir())
@@ -512,6 +527,7 @@ pub fn run() {
             sessions_running,
             past_sessions,
             project_folders,
+            last_reply,
             path_is_dir,
             list_dirs,
             store_load,
