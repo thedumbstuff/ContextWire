@@ -33,3 +33,13 @@
   transcript changed in the last 5 minutes are tagged "active" and open paused
   with "Adopt here" so a session still running in a terminal is never resumed
   twice. Verified in the installed build.
+- v0.1.1 - troubleshooting: rotating log at %APPDATA%\ContextWire\logs\contextwire.log
+  (1 MB, one old file kept) records app start, hook endpoint, every hook event
+  (event, session, folder, tool/notification - never prompts), status changes,
+  console spawn args/exit codes and UI errors. Settings > Troubleshooting has
+  Copy diagnostics (facts + last 200 log lines + status/folder-only session
+  summary) and Open logs folder. Watchtower check `installed_current.py`
+  flags an installed app older than the source.
+- Fixed: the "may be open in a terminal" pause stuck to a session forever; it
+  is now re-checked on every open (5-minute rule, or SessionEnd when global
+  hooks are on).

@@ -284,7 +284,7 @@ phases:
 
       - id: P5.5
         title: "Troubleshooting: rotating log file (hook events, status changes, console start/exit, errors) + Copy diagnostics / Open logs in Settings"
-        status: in_progress
+        status: done
         effort: 2
         why: "Owner asked 2026-10-01 how issues will be found. Logs never contain prompts or conversation text; diagnostics add a status/folder-only session summary."
         checks:
@@ -292,7 +292,7 @@ phases:
           - {type: cmd, run: 'findstr /c:"Copy diagnostics" index.html'}
       - id: P5.6
         title: Watchtower check - installed app is the latest build of the latest source
-        status: in_progress
+        status: done
         effort: 1
         checks:
           - {type: cmd, run: "python watchtower/checks/installed_current.py"}
@@ -344,6 +344,7 @@ features:
   - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: building, task: P5.2}
   - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
   - {id: F14, title: Earlier sessions listed inside every workspace with one-click resume, source: own, area: workspace, status: shipped, task: P4.5, note: "Like claude --resume, but for every workspace at once; guards against resuming a session still open in a terminal"}
+  - {id: F15, title: "Troubleshooting: log file, Copy diagnostics, Open logs folder", source: own, area: other, status: shipped, task: P5.5, note: "Logs never contain prompts or conversation text"}
   - {id: F13, title: Search sessions, source: own, area: sessions, status: shipped, task: P5.3}
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
   - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}

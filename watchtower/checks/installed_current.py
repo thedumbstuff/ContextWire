@@ -1,8 +1,9 @@
 """Watchtower check: the installed ContextWire is the latest build of the latest source.
 
 Passes when
-  1. %LOCALAPPDATA%\\ContextWire\\contextwire.exe is byte-identical to
-     src-tauri/target/release/contextwire.exe, and
+  1. the installed exe comes from the latest release build: same size and
+     written within two minutes of it (the bundler stamps the bundle type into
+     the exe, so the bytes are not identical), and
   2. that release build is newer than every source file that goes into it.
 Exit 0 = pass; otherwise prints what is stale and exits 1.
 """

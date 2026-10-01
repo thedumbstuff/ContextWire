@@ -30,6 +30,17 @@ npx tsc --noEmit
 Rust is installed per-user via rustup (`%USERPROFILE%\.cargo\bin`); open a new
 shell if `cargo` is not on PATH.
 
+## Troubleshooting a reported issue
+
+1. Ask the owner for Settings > Troubleshooting > Copy diagnostics, or read
+   `%APPDATA%\ContextWire\logs\contextwire.log` directly (hook events, status
+   changes, spawn/exit, UI errors - one line each, UTC).
+2. `%APPDATA%\ContextWire\state.json` = what the sidebar believes;
+   `~/.claude/projects/*/<id>.jsonl` = what Claude actually did.
+3. `python watchtower/checks/installed_current.py` - is the installed app the
+   latest source? Never rebuild/reinstall while the owner has consoles open
+   (reinstall kills them); check for child processes of contextwire.exe first.
+
 ## Gotchas
 
 - The hook client must never block Claude: short connect/read timeouts and
