@@ -515,6 +515,46 @@ phases:
         checks:
           - {type: cmd, run: 'findstr /c:"export function wordDiff" src\gitview\model.ts'}
 
+  - id: P9
+    name: Scheduled agent jobs
+    goal: "Owner request 2026-10-01: configure a job once (folder, instruction, schedule, permissions); when the time comes an unattended Claude agent runs it and the result shows up as a report, toast and Activity entry. First job: Cloudflare website views."
+    tasks:
+      - id: P9.1
+        title: "Scheduler core: job store, cron + presets, next-run, catch-up of missed runs (once), no overlap, timeout"
+        status: pending
+        effort: 3
+        depends_on: [P2.2]
+      - id: P9.2
+        title: "Runner: claude -p in the job folder with the job's permissions (allowedTools / auto), JSON result, report + STATUS line, run history on disk"
+        status: pending
+        effort: 3
+        depends_on: [P9.1]
+      - id: P9.3
+        title: Per-job secrets encrypted with Windows DPAPI, passed as environment variables, never logged
+        status: pending
+        effort: 2
+        depends_on: [P9.2]
+      - id: P9.4
+        title: "Jobs panel + editor: schedule picker with next-run preview, explicit permission choices (nothing by default), secrets, notify rule, Run now, enable/disable"
+        status: pending
+        effort: 3
+        depends_on: [P9.2]
+      - id: P9.5
+        title: "Report view: markdown (tables) + simple charts from the agent's chart blocks, run history, Continue in a session"
+        status: pending
+        effort: 3
+        depends_on: [P9.4]
+      - id: P9.6
+        title: Notifications + Activity for job results; toast click opens the report
+        status: pending
+        effort: 1
+        depends_on: [P9.5]
+      - id: P9.7
+        title: First job - Cloudflare website views (template + live run once the owner adds an API token and zone id)
+        status: pending
+        effort: 2
+        depends_on: [P9.6]
+
 features:
   # ---- ContextWire's own core (why it exists) ----
   - {id: F1, title: Real claude CLI console in every chat, source: own, area: console, status: shipped, task: P1.2, note: "Full CLI fidelity - slash commands, permission prompts, skills, your TUI settings"}
@@ -536,6 +576,7 @@ features:
   - {id: F18, title: Roadmaps across all projects (watchtower roll-up), source: own, area: workspace, status: shipped, task: P7.7}
   - {id: F19, title: Activity timeline across sessions, source: own, area: status, status: shipped, task: P7.8}
   - {id: F43, title: "Git view like PyCharm: branches, log graph + filters, files tree, commit details, side-by-side diff", source: own, area: review, status: shipped, task: P8.6, note: "Read-only; opened from the Git panel"}
+  - {id: F44, title: "Scheduled agent jobs (cron): unattended Claude runs a configured task and reports back", source: own, area: other, status: building, task: P9.7, note: "e.g. weekly website views from Cloudflare"}
   - {id: F13, title: Search sessions, source: own, area: sessions, status: shipped, task: P5.3}
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
   - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}
@@ -550,7 +591,7 @@ features:
   - {id: F29, title: Side question without derailing the session, source: official, area: console, status: idea, note: "Possible as a /btw-style forked session"}
   - {id: F30, title: "Chat-bubble UI (graphical transcript, tool cards, approve buttons)", source: official, area: console, status: planned, task: P6.5}
   - {id: F31, title: Plan / tasks / subagent panes, source: official, area: review, status: idea}
-  - {id: F32, title: Scheduled recurring tasks, source: official, area: sessions, status: idea}
+  - {id: F32, title: Scheduled recurring tasks, source: official, area: sessions, status: building, task: P9.7, note: "Built as P9 scheduled agent jobs"}
   - {id: F33, title: Cloud sessions that survive app close, source: official, area: sessions, status: idea}
   - {id: F34, title: SSH and WSL sessions, source: official, area: sessions, status: idea, note: "PTY could run wsl.exe / ssh claude"}
   - {id: F35, title: Claude can check on / message / archive your other sessions, source: official, area: sessions, status: idea}
