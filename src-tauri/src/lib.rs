@@ -144,6 +144,31 @@ fn path_is_dir(path: String) -> bool {
     Path::new(&path).is_dir()
 }
 
+#[derive(Serialize)]
+struct DirEntry {
+    name: String,
+    git: bool,
+}
+
+/// Immediate, non-hidden subfolders (repos first) - for the New session picker.
+#[tauri::command]
+async fn list_dirs(path: String) -> Vec<DirEntry> {
+    let mut out: Vec<DirEntry> = std::fs::read_dir(&path)
+        .map(|rd| {
+            rd.flatten()
+                .filter(|e| e.file_type().map_or(false, |t| t.is_dir()))
+                .filter_map(|e| {
+                    let name = e.file_name().to_string_lossy().to_string();
+                    let skip = name.starts_with('.') || ["node_modules", "venv", ".venv", "__pycache__", "target", "dist"].contains(&name.as_str());
+                    (!skip).then(|| DirEntry { git: e.path().join(".git").exists(), name })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    out.sort_by(|a, b| b.git.cmp(&a.git).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+    out
+}
+
 #[tauri::command]
 fn store_load(state: State<AppState>) -> Value {
     std::fs::read_to_string(state.data_dir.join("state.json"))
@@ -188,6 +213,12 @@ fn tray_status(app: AppHandle, tooltip: String) {
     if let Some(t) = app.tray_by_id(TRAY_ID) {
         let _ = t.set_tooltip(Some(tooltip));
     }
+}
+
+/// Frontend log line -> stderr (visible in `tauri dev` output).
+#[tauri::command]
+fn ui_log(level: String, msg: String) {
+    eprintln!("[ui {level}] {msg}");
 }
 
 #[tauri::command]
@@ -294,13 +325,15 @@ pub fn run() {
             sessions_running,
             past_sessions,
             path_is_dir,
+            list_dirs,
             store_load,
             store_save,
             global_hooks_set,
             attention,
             window_focused,
             tray_status,
-            quit_app
+            quit_app,
+            ui_log
         ])
         .run(tauri::generate_context!())
         .expect("error while running ContextWire");

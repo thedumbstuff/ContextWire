@@ -2,42 +2,106 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>ContextWire</title>
+    <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/main.ts" defer></script>
   </head>
-
   <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="logo">◆</span><span class="name">ContextWire</span>
+          <span class="spacer"></span>
+          <button class="icon" id="btnHistory" title="History - resume a past session (Ctrl+Shift+H)">⟲</button>
+          <button class="icon" id="btnSettings" title="Settings">⚙</button>
+        </div>
+        <div class="summary" id="summary"></div>
+        <input id="search" type="search" placeholder="Search sessions" autocomplete="off" />
+        <div class="groups" id="groups"></div>
+        <button class="primary new" id="btnNew">＋ New session <kbd>Ctrl+Shift+N</kbd></button>
+      </aside>
 
-      <div class="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
-      </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+      <main class="main">
+        <header class="bar hidden" id="bar">
+          <span class="dot" id="barDot"></span>
+          <div class="bar-title">
+            <div class="t" id="barTitle"></div>
+            <div class="sub" id="barSub"></div>
+          </div>
+          <span class="spacer"></span>
+          <span class="state" id="barState"></span>
+          <button id="btnResume" class="hidden">Resume</button>
+          <button id="btnRename" title="Rename">Rename</button>
+          <button id="btnClose" title="End the claude process and remove from the list">Close</button>
+        </header>
+        <div class="banner hidden" id="banner"></div>
+        <div class="terms" id="terms">
+          <div class="empty" id="empty">
+            <div class="big">◆</div>
+            <h2>One window for every Claude console</h2>
+            <p>Start a session in any workspace, or resume one from History.
+               Sessions that finish or need you light up here, in the tray and as Windows notifications.</p>
+            <div class="row">
+              <button class="primary" id="btnNew2">＋ New session</button>
+              <button id="btnHistory2">⟲ History</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
+    <dialog id="dlgNew">
+      <form method="dialog" class="dlg">
+        <h3>New Claude session</h3>
+        <label>Workspace
+          <select id="newRoot"></select>
+        </label>
+        <label>Folder
+          <div class="row"><input id="newCwd" spellcheck="false" /><button type="button" id="newBrowse">Browse…</button></div>
+        </label>
+        <div class="repos" id="newRepos"></div>
+        <label>Name <span class="muted">(optional)</span>
+          <input id="newName" placeholder="e.g. fix nav bug" />
+        </label>
+        <label class="check"><input type="checkbox" id="newWorktree" /> Isolate in a new git worktree (<code>--worktree</code>)</label>
+        <div class="err" id="newErr"></div>
+        <div class="actions">
+          <button type="button" data-close>Cancel</button>
+          <button class="primary" id="newGo" value="go">Start</button>
+        </div>
       </form>
-      <p id="greet-msg"></p>
-    </main>
+    </dialog>
+
+    <dialog id="dlgHistory">
+      <div class="dlg wide">
+        <div class="row"><h3>History</h3><span class="spacer"></span><input id="histSearch" type="search" placeholder="Filter by title, prompt or folder" /><button id="histClose">Close</button></div>
+        <div class="hist" id="histList">loading…</div>
+      </div>
+    </dialog>
+
+    <dialog id="dlgSettings">
+      <form method="dialog" class="dlg">
+        <h3>Settings</h3>
+        <label class="check"><input type="checkbox" id="setNotifyDone" /> Notify when a session finishes while I'm not looking at it</label>
+        <label class="check"><input type="checkbox" id="setNotifyNeeds" /> Notify + flash the taskbar when a session needs me</label>
+        <label class="check"><input type="checkbox" id="setAutostart" /> Start ContextWire with Windows (in the tray)</label>
+        <label class="check"><input type="checkbox" id="setGlobal" /> Track sessions started in plain terminals too</label>
+        <p class="muted small" id="setGlobalHelp">Adds ContextWire's status hook to <code id="setUserSettings"></code> (backup kept). Without it, only sessions started here are tracked.</p>
+        <h4>Workspaces</h4>
+        <div id="setRoots" class="roots"></div>
+        <button type="button" id="setAddRoot">＋ Add workspace folder</button>
+        <p class="muted small" id="setInfo"></p>
+        <div class="actions"><button class="primary" value="ok">Done</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="dlgRename">
+      <form method="dialog" class="dlg">
+        <h3>Rename session</h3>
+        <input id="renameInput" />
+        <div class="actions"><button type="button" data-close>Cancel</button><button class="primary" value="ok">Save</button></div>
+      </form>
+    </dialog>
   </body>
 </html>
