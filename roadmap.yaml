@@ -521,34 +521,51 @@ phases:
     tasks:
       - id: P9.1
         title: "Scheduler core: job store, cron + presets, next-run, catch-up of missed runs (once), no overlap, timeout"
-        status: pending
+        status: done
         effort: 3
         depends_on: [P2.2]
+        checks:
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet cron"}
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet jobs::tests::due"}
       - id: P9.2
         title: "Runner: claude -p in the job folder with the job's permissions (allowedTools / auto), JSON result, report + STATUS line, run history on disk"
-        status: pending
+        status: done
         effort: 3
         depends_on: [P9.1]
+        why: "Verified 2026-10-01 with the real CLI (ignored test real_claude_job): unattended read-only run, 24 s, report + STATUS parsed, session id kept, secret not leaked."
+        checks:
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet jobs"}
       - id: P9.3
         title: Per-job secrets encrypted with Windows DPAPI, passed as environment variables, never logged
-        status: pending
+        status: done
         effort: 2
         depends_on: [P9.2]
+        checks:
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet secrets"}
       - id: P9.4
         title: "Jobs panel + editor: schedule picker with next-run preview, explicit permission choices (nothing by default), secrets, notify rule, Run now, enable/disable"
-        status: pending
+        status: in_progress
         effort: 3
         depends_on: [P9.2]
+        why: "Built and type-checked; panel + editor render in the dev build. Full on-screen flow (save, run, toggle) still to verify when the PC is free."
+        checks:
+          - {type: path, path: src/jobs/panel.ts}
+          - {type: cmd, run: "npx tsc --noEmit"}
       - id: P9.5
         title: "Report view: markdown (tables) + simple charts from the agent's chart blocks, run history, Continue in a session"
-        status: pending
+        status: in_progress
         effort: 3
         depends_on: [P9.4]
+        why: "Markdown/table/chart renderer unit-tested; report view not yet seen on screen."
+        checks:
+          - {type: path, path: src/jobs/report.ts}
+          - {type: cmd, run: "node --experimental-strip-types --test tests/jobs.test.ts"}
       - id: P9.6
         title: Notifications + Activity for job results; toast click opens the report
-        status: pending
+        status: in_progress
         effort: 1
         depends_on: [P9.5]
+        why: "Wired (job-run event -> Activity + toast job:<id>); toast click needs the installed build to verify."
       - id: P9.7
         title: First job - Cloudflare website views (template + live run once the owner adds an API token and zone id)
         status: pending
