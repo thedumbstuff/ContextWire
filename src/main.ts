@@ -391,11 +391,18 @@ function renderRoots() {
 
 // ---------------------------------------------------------------- startup
 
+/** Folders Claude has been used in (transcripts + project dir names), top-level only. */
+async function discoverRoots(): Promise<string[]> {
+  const ps: PastSession[] = await invoke("past_sessions", { limit: 400 });
+  const dirs: string[] = await invoke("project_folders");
+  const tmp = (p: string) => /\\appdata\\local\\temp\\/i.test(p);
+  return topLevel([...ps.map((p) => p.cwd), ...dirs].filter((p) => !tmp(p))).sort((a, b) => a.localeCompare(b));
+}
+
 async function seedRoots() {
   if (roots.length) return;
   try {
-    const ps: PastSession[] = await invoke("past_sessions", { limit: 400 });
-    roots = topLevel(ps.map((p) => p.cwd)).sort((a, b) => a.localeCompare(b));
+    roots = await discoverRoots();
     save();
   } catch (e) {
     console.error("seed roots", e);
@@ -504,6 +511,13 @@ function bindUi() {
       roots.push(picked);
       renderRoots(); render(); save();
     }
+  };
+  $("setFindRoots").onclick = async () => {
+    const found = await discoverRoots().catch(() => [] as string[]);
+    const added = found.filter((f) => !roots.some((r) => r.toLowerCase() === f.toLowerCase()));
+    roots.push(...added);
+    renderRoots(); render(); save();
+    $("setFindRoots").textContent = added.length ? `Added ${added.length}` : "Nothing new found";
   };
   $("setRoots").onclick = (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-rmroot]");

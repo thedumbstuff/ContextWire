@@ -92,6 +92,53 @@ pub fn read_session(path: &Path) -> Option<PastSession> {
     (!s.cwd.is_empty()).then_some(s)
 }
 
+/// Turn a project folder name back into the path it encodes. Claude replaces
+/// the drive colon and path separators with dashes, so "C--Work-my-app" may be
+/// C:/Work/my-app or C:/Work/my/app; resolve the ambiguity by walking the real
+/// filesystem. Returns None when no existing folder matches.
+pub fn decode_project_dir(name: &str) -> Option<PathBuf> {
+    let (drive, rest) = name.split_once("--")?;
+    if drive.len() != 1 || !drive.chars().all(|c| c.is_ascii_alphabetic()) {
+        return None;
+    }
+    let tokens: Vec<&str> = rest.split('-').collect();
+    fn walk(dir: &Path, tokens: &[&str]) -> Option<PathBuf> {
+        if tokens.is_empty() {
+            return Some(dir.to_path_buf());
+        }
+        // longest component first: "playpaltoons-ABCVideo" before "playpaltoons"
+        for take in (1..=tokens.len().min(6)).rev() {
+            for sep in ["-", " ", "_", "."] {
+                let comp = tokens[..take].join(sep);
+                if comp.is_empty() {
+                    continue;
+                }
+                let p = dir.join(&comp);
+                if p.is_dir() {
+                    if let Some(found) = walk(&p, &tokens[take..]) {
+                        return Some(found);
+                    }
+                }
+                if take == 1 {
+                    break; // separators make no difference for one token
+                }
+            }
+        }
+        None
+    }
+    walk(&PathBuf::from(format!("{drive}:\\")), &tokens)
+}
+
+/// Folders Claude has been started in, from the project directory names.
+pub fn project_folders(root: &Path) -> Vec<String> {
+    let Ok(rd) = std::fs::read_dir(root) else { return vec![] };
+    rd.flatten()
+        .filter(|e| e.path().is_dir())
+        .filter_map(|e| decode_project_dir(&e.file_name().to_string_lossy()))
+        .map(|p| p.display().to_string())
+        .collect()
+}
+
 /// All past sessions under `root` (normally `projects_dir()`), newest first.
 pub fn scan(root: &Path, limit: usize) -> Vec<PastSession> {
     let mut files: Vec<(u64, PathBuf)> = Vec::new();
@@ -113,6 +160,18 @@ pub fn scan(root: &Path, limit: usize) -> Vec<PastSession> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn decodes_dash_ambiguous_folder_names() {
+        let base = std::env::temp_dir().join(format!("cwdec{}", uuid::Uuid::new_v4().simple()));
+        let target = base.join("Work").join("play-toons-ABC").join("src");
+        std::fs::create_dir_all(&target).unwrap();
+        std::fs::create_dir_all(base.join("Work").join("play")).unwrap(); // decoy
+        let enc = target.display().to_string().replace(':', "-").replace('\\', "-");
+        assert_eq!(decode_project_dir(&enc), Some(target.clone()));
+        assert_eq!(decode_project_dir("C--definitely-not-a-real-folder-xyz"), None);
+        assert_eq!(decode_project_dir("no-drive"), None);
+    }
 
     #[test]
     fn parses_cwd_prompt_and_title() {

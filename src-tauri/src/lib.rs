@@ -140,6 +140,11 @@ async fn past_sessions(limit: Option<usize>) -> Vec<workspaces::PastSession> {
 }
 
 #[tauri::command]
+async fn project_folders() -> Vec<String> {
+    workspaces::project_folders(&workspaces::projects_dir())
+}
+
+#[tauri::command]
 fn path_is_dir(path: String) -> bool {
     Path::new(&path).is_dir()
 }
@@ -324,6 +329,7 @@ pub fn run() {
             session_kill,
             sessions_running,
             past_sessions,
+            project_folders,
             path_is_dir,
             list_dirs,
             store_load,

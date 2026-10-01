@@ -89,9 +89,10 @@ code { font-family: var(--mono); font-size: 12px; }
 .empty .row { justify-content: center; margin-top: 8px; }
 
 /* ---- dialogs ---- */
-dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 0; width: min(560px, calc(100vw - 32px)); }
+dialog { overflow-x: hidden; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 0; width: min(560px, calc(100vw - 32px)); }
 dialog::backdrop { background: #0008; }
-.dlg { display: grid; gap: 12px; padding: 18px; }
+.dlg { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 18px; }
+.dlg p { margin: 0; overflow-wrap: anywhere; }
 .dlg.wide { width: min(820px, calc(100vw - 32px)); }
 dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .dlg h3 { margin: 0; font-size: 15px; }
@@ -114,7 +115,7 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .hrow .when { color: var(--faint); font-size: 11px; }
 .roots { display: grid; gap: 4px; }
 .rootrow { display: flex; gap: 8px; align-items: center; font: 12px var(--mono); }
-.rootrow span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rootrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rootrow button { padding: 2px 8px; font-size: 11px; }
 
 @media (max-width: 900px) { .app { grid-template-columns: 240px minmax(0, 1fr); } }
