@@ -360,50 +360,81 @@ phases:
     tasks:
       - id: P7.1
         title: Icon rail + panel host - badges, Alt+1..6, click active icon to hide panel, resizable width, remembered tab
-        status: in_progress
+        status: done
         effort: 3
+        why: "Verified 2026-10-01 in the UI audit at 1320x840 and 900x600 (collapse, resize cap, badges, Alt+1..6)."
         depends_on: [P2.4]
+        checks:
+          - {type: path, path: src/rail.ts}
+          - {type: cmd, run: 'findstr /c:"grid-column: 4" src\styles.css'}
+
       - id: P7.2
         title: "Active tab - every running or unread session, flat: needs-you, then unread, then recent; workspace label per row"
-        status: in_progress
+        status: done
         effort: 2
         depends_on: [P7.1]
+        checks:
+          - {type: cmd, run: 'findstr /c:"export function renderActive" src\sidebar.ts'}
+
       - id: P7.3
         title: All Sessions tab - workspace -> repo/subfolder -> open + earlier sessions
-        status: in_progress
+        status: done
         effort: 2
         depends_on: [P7.1]
+        checks:
+          - {type: cmd, run: 'findstr /c:"firstSegment" src\sidebar.ts'}
+
       - id: P7.4
         title: "Git: repo scan under every workspace + status (branch, ahead/behind, changes, last change time); newest-first with toggle"
-        status: in_progress
+        status: done
         effort: 3
         depends_on: [P7.1]
+        checks:
+          - {type: path, path: src-tauri/src/gitops.rs}
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet gitops"}
+
       - id: P7.5
         title: "Git: recent commits per repo (hash, message, author, age, pushed or not) + sessions working in the repo"
-        status: in_progress
+        status: done
         effort: 2
         depends_on: [P7.4]
+        checks:
+          - {type: path, path: src/panels/git.ts}
+
       - id: P7.6
         title: "Git actions: fetch, pull (fast-forward only), push, reword an unpushed commit message; errors shown, every action logged"
-        status: in_progress
+        status: done
         effort: 3
         depends_on: [P7.5]
-        why: "Rewording a pushed commit needs a force-push - disabled with an explanation."
+        why: "Edit works on any unpushed commit (commit-tree rebuild), pushed ones open read-only; tested on temp repos and used live by the owner."
+        checks:
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet reword"}
+
       - id: P7.7
         title: Roadmaps tab - every repo with roadmap.yaml - progress, in progress, blocked, next up, open decisions; open its watchtower
-        status: in_progress
+        status: done
         effort: 3
         depends_on: [P7.4]
+        checks:
+          - {type: path, path: src-tauri/src/roadmaps.rs}
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet roadmaps"}
+
       - id: P7.8
         title: Activity tab - timeline of finished / needs-you / started / ended across all sessions, persisted, click to open
-        status: in_progress
+        status: done
         effort: 2
         depends_on: [P7.1]
+        checks:
+          - {type: path, path: src/panels/activity.ts}
+
       - id: P7.9
         title: Search tab - full-text search across all transcripts, snippet + jump to resume
-        status: in_progress
+        status: done
         effort: 3
         depends_on: [P7.1]
+        checks:
+          - {type: path, path: src-tauri/src/search.rs}
+          - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet search"}
 
 features:
   # ---- ContextWire's own core (why it exists) ----
@@ -421,10 +452,10 @@ features:
   - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
   - {id: F14, title: Earlier sessions listed inside every workspace with one-click resume, source: own, area: workspace, status: shipped, task: P4.5, note: "Like claude --resume, but for every workspace at once; guards against resuming a session still open in a terminal"}
   - {id: F15, title: "Troubleshooting: log file, Copy diagnostics, Open logs folder", source: own, area: other, status: shipped, task: P5.5, note: "Logs never contain prompts or conversation text"}
-  - {id: F16, title: "PyCharm-style tool windows: Active, All Sessions, Git, Roadmaps, Activity, Search", source: own, area: sessions, status: building, task: P7.1}
-  - {id: F17, title: "Git panel: repos newest-first, commits, pull/push, reword unpushed commit", source: own, area: review, status: building, task: P7.6, note: "Like the Antigravity git panel"}
-  - {id: F18, title: Roadmaps across all projects (watchtower roll-up), source: own, area: workspace, status: building, task: P7.7}
-  - {id: F19, title: Activity timeline across sessions, source: own, area: status, status: building, task: P7.8}
+  - {id: F16, title: "PyCharm-style tool windows: Active, All Sessions, Git, Roadmaps, Activity, Search", source: own, area: sessions, status: shipped, task: P7.1}
+  - {id: F17, title: "Git panel: repos newest-first, commits, pull/push, reword unpushed commit", source: own, area: review, status: shipped, task: P7.6, note: "Like the Antigravity git panel"}
+  - {id: F18, title: Roadmaps across all projects (watchtower roll-up), source: own, area: workspace, status: shipped, task: P7.7}
+  - {id: F19, title: Activity timeline across sessions, source: own, area: status, status: shipped, task: P7.8}
   - {id: F13, title: Search sessions, source: own, area: sessions, status: shipped, task: P5.3}
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
   - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}
