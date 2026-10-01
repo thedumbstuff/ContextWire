@@ -272,11 +272,15 @@ phases:
           - {type: path, path: src-tauri/target/release/bundle/nsis/ContextWire_0.1.0_x64-setup.exe}
 
       - id: P5.2
-        title: Keyboard shortcuts (Ctrl+1..9 switch, Ctrl+N new, Ctrl+K search, Ctrl+Shift+U next unread)
-        status: in_progress
+        title: "Keyboard shortcuts: Ctrl+1..9 / Ctrl+Tab between sessions, Ctrl+Shift+N/H/F/U, Alt+1..6 panels; listed in Settings"
+        status: done
         effort: 2
-        why: "Done: Ctrl+Shift+N new, Ctrl+Shift+H history, Ctrl+Shift+U jump to next needs-you/unread. Pending: Ctrl+1..9, Ctrl+K. Plain Ctrl keys are left to Claude (Ctrl+H is backspace in terminals)."
         depends_on: [P2.4]
+        why: "Verified 2026-10-01 in the dev build: Ctrl+1 / Ctrl+Tab / Ctrl+2 switch sessions in Active-panel order. Ctrl+K dropped (it is kill-line in the terminal; search is Ctrl+Shift+F)."
+        checks:
+          - {type: cmd, run: 'findstr /c:"function activeOrder" src\main.ts'}
+          - {type: cmd, run: 'findstr /c:"Keyboard shortcuts" index.html'}
+
       - id: P5.3
         title: Search sessions by name / folder / last message
         status: done
@@ -448,7 +452,7 @@ features:
   - {id: F8, title: History of past sessions across all workspaces + one-click resume, source: own, area: workspace, status: shipped, task: P4.3}
   - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: building, task: P4.4, note: "The official app cannot see a running terminal session at all"}
   - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: planned, task: P3.5}
-  - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: building, task: P5.2}
+  - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: shipped, task: P5.2}
   - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
   - {id: F14, title: Earlier sessions listed inside every workspace with one-click resume, source: own, area: workspace, status: shipped, task: P4.5, note: "Like claude --resume, but for every workspace at once; guards against resuming a session still open in a terminal"}
   - {id: F15, title: "Troubleshooting: log file, Copy diagnostics, Open logs folder", source: own, area: other, status: shipped, task: P5.5, note: "Logs never contain prompts or conversation text"}

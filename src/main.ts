@@ -6,13 +6,13 @@ import { enable as autostartOn, disable as autostartOff, isEnabled as autostartI
 
 import type { AppInfo, HookEvent, PastSession, Persisted, Session, Settings } from "./types";
 import { TermHost } from "./terminal";
-import { displayName, renderActive, renderSidebar, STATUS_LABEL } from "./sidebar";
+import { displayName, isActive, renderActive, renderSidebar, STATUS_LABEL } from "./sidebar";
 import { Rail, type PanelId, type RailState } from "./rail";
 import { GitPanel } from "./panels/git";
 import { RoadmapsPanel } from "./panels/roadmaps";
 import { ActivityPanel } from "./panels/activity";
 import { SearchPanel, type SessionHits } from "./panels/search";
-import { ago, applyHook, basename, firstLine, relativeTo, rootFor, topLevel } from "./status";
+import { ago, applyHook, basename, firstLine, relativeTo, rootFor, sessionRank, topLevel } from "./status";
 
 // ---------------------------------------------------------------- state
 
@@ -309,6 +309,11 @@ async function closeSession(id: string) {
   }
   render();
   save();
+}
+
+/** Sessions in Active-panel order: needs you, unread, most recent. */
+function activeOrder(): Session[] {
+  return [...sessions.values()].filter(isActive).sort(sessionRank);
 }
 
 function nextAttention(): Session | undefined {
@@ -721,7 +726,26 @@ function bindUi() {
   ($("dlgSettings") as HTMLDialogElement).addEventListener("close", () => { if (activeId) hosts.get(activeId)?.focus(); });
   ($("dlgNew") as HTMLDialogElement).addEventListener("close", () => { if (activeId) hosts.get(activeId)?.focus(); });
 
-  // shortcuts use Ctrl+Shift so plain Ctrl keys keep working inside Claude
+  // Ctrl+1..9 / Ctrl+Tab move between sessions (same order as the Active panel);
+  // Claude's console does not use these keys
+  window.addEventListener("keydown", (e) => {
+    if (!e.ctrlKey || e.altKey) return;
+    const list = activeOrder();
+    if (!e.shiftKey && /^[1-9]$/.test(e.key)) {
+      const s = list[Number(e.key) - 1];
+      e.preventDefault(); e.stopPropagation();
+      if (s) select(s.id);
+      return;
+    }
+    if (e.key === "Tab" && list.length) {
+      e.preventDefault(); e.stopPropagation();
+      const i = list.findIndex((s) => s.id === activeId);
+      const next = list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+      select(next.id);
+    }
+  }, true);
+
+  // other shortcuts use Ctrl+Shift so plain Ctrl keys keep working inside Claude
   window.addEventListener("keydown", (e) => {
     if (!(e.ctrlKey && e.shiftKey)) return;
     const k = e.key.toLowerCase();

@@ -111,7 +111,12 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .dlg .err, .err { color: var(--st-needs); font-size: 12px; min-height: 0; }
 .repos { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .chip { padding: 2px 8px; border-radius: 10px; font-size: 12px; }
-.chip.git::before { content: "⎇ "; color: var(--st-done); }
+/* branch icon drawn with a mask (the ⎇ glyph renders as a squiggle in Segoe UI) */
+.chip.git::before {
+  content: ""; display: inline-block; width: 11px; height: 11px; margin-right: 4px; vertical-align: -1px; background: var(--st-done);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='6' cy='5' r='2'/%3E%3Ccircle cx='6' cy='19' r='2'/%3E%3Ccircle cx='18' cy='9' r='2'/%3E%3Cpath d='M6 7v10M18 11c0 4-6 3-11.2 6.6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='6' cy='5' r='2'/%3E%3Ccircle cx='6' cy='19' r='2'/%3E%3Ccircle cx='18' cy='9' r='2'/%3E%3Cpath d='M6 7v10M18 11c0 4-6 3-11.2 6.6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .hist { max-height: 62vh; overflow-y: auto; display: grid; gap: 2px; }
 .hist h4 { margin: 10px 0 4px; }
 .hrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
@@ -135,7 +140,7 @@ dialog:has(.dlg.wide) { width: min(860px, calc(100vw - 32px)); }
 .sess.past:hover .t { color: var(--text); }
 .pastmore { background: none; border: 0; color: var(--accent); font-size: 11px; padding: 2px 8px 4px 30px; }
 .pastmore:hover { text-decoration: underline; }
-.gnew { margin-left: auto; background: none; border: 0; padding: 0 4px; color: var(--faint); font-size: 14px; line-height: 1; visibility: hidden; }
+.gnew { margin-left: auto; background: none; border: 0; padding: 0 6px; color: var(--muted); font-size: 16px; line-height: 1; visibility: hidden; }
 .ghead:hover .gnew { visibility: visible; }
 .gnew:hover { color: var(--accent); }
 .sess.past.recent .when { color: var(--st-working); }
@@ -240,3 +245,6 @@ mark { background: #e3a52640; color: #fff; border-radius: 2px; padding: 0 1px; }
 .rm li.more { color: var(--faint); list-style: none; margin-left: -14px; font-size: 11px; }
 .act .ico svg { vertical-align: -2px; }
 .act.k-needs .ico { font-weight: 700; }
+
+.keys { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.keys kbd { margin: 0 2px 0 0; color: var(--text); }
