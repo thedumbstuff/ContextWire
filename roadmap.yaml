@@ -115,7 +115,7 @@ phases:
     tasks:
       - id: P1.1
         title: Rust PTY session manager (portable-pty / ConPTY) - spawn, write, resize, kill, output + exit events
-        status: pending
+        status: done
         effort: 4
         depends_on: [P0.2]
         checks:
@@ -123,7 +123,7 @@ phases:
           - {type: cmd, run: "cargo test --manifest-path src-tauri/Cargo.toml --quiet"}
       - id: P1.2
         title: xterm.js console pane (fit addon, one live terminal per session, hidden when not active)
-        status: pending
+        status: done
         effort: 3
         depends_on: [P1.1]
         checks:
@@ -131,7 +131,7 @@ phases:
           - {type: cmd, run: "npx tsc --noEmit"}
       - id: P1.3
         title: Chat-style sidebar - sessions grouped by workspace, new/close/rename session
-        status: pending
+        status: done
         effort: 3
         depends_on: [P1.2]
         checks:
@@ -150,34 +150,34 @@ phases:
     tasks:
       - id: P2.1
         title: Hook client mode (`contextwire.exe --hook`) - reads hook JSON on stdin, posts to the app, never blocks Claude
-        status: pending
+        status: done
         effort: 2
         depends_on: [P1.1]
         checks:
           - {type: path, path: src-tauri/src/hook.rs}
       - id: P2.2
         title: Localhost hook endpoint with per-install token; emits status events to the UI
-        status: pending
+        status: done
         effort: 2
         depends_on: [P2.1]
         checks:
           - {type: path, path: src-tauri/src/hookserver.rs}
       - id: P2.3
         title: In-app sessions launched with --session-id + --settings hooks (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Notification, Stop, SessionEnd)
-        status: pending
+        status: done
         effort: 2
         depends_on: [P2.2]
       - id: P2.4
         title: Sidebar status dots, unread counts, bold/red highlight, needs-you floats to top, cleared on open
-        status: pending
+        status: done
         effort: 3
         depends_on: [P2.3, P1.3]
       - id: P2.5
         title: End-to-end verification - a real claude session in the app goes working -> done and the row highlights
-        status: pending
+        status: done
         effort: 2
         depends_on: [P2.4]
-        why: Automated test covers the hook round-trip (cargo test); the live check with a real claude turn is done by hand.
+        why: "Verified live 2026-10-01 with a real claude 2.1.286 session in the dev app: SessionStart -> ready, prompt -> working -> done with unread badge while unfocused, needs-you via the real hook client (51 ms), focus clears unread. A real permission prompt was not triggered (session was in auto mode)."
 
   - id: P3
     name: Notifications and tray
@@ -185,13 +185,15 @@ phases:
     tasks:
       - id: P3.1
         title: Windows toast on needs-you, and on done when the session is not in view
-        status: pending
+        status: done
         effort: 2
+        why: "Verified 2026-10-01: both toasts (needs you / is done) found in the Windows notification database. Dev builds show them under PowerShell; the installed build uses the app identity."
         depends_on: [P2.4]
       - id: P3.2
         title: Taskbar flash (request_user_attention) on needs-you
-        status: pending
+        status: done
         effort: 1
+        why: "request_user_attention on needs (critical) / done (informational) when the window is not focused. Not visually confirmed (taskbar flash is not capturable from a screenshot)."
         depends_on: [P2.4]
       - id: P3.3
         title: System tray icon with live counts tooltip, Show / Quit menu, close-to-tray
@@ -216,27 +218,27 @@ phases:
     tasks:
       - id: P4.1
         title: Workspace registry seeded from ~/.claude/projects (cwd read from transcripts) + add-folder picker
-        status: pending
+        status: done
         effort: 2
         depends_on: [P1.3]
         checks:
           - {type: path, path: src-tauri/src/workspaces.rs}
       - id: P4.2
         title: Restore open sessions after app restart (claude --resume <id> in the original cwd)
-        status: pending
+        status: done
         effort: 2
         depends_on: [P4.1, P2.3]
       - id: P4.3
         title: History browser - past sessions per workspace from transcripts, one-click resume
-        status: pending
+        status: done
         effort: 3
         depends_on: [P4.1]
       - id: P4.4
         title: Opt-in global hooks (track sessions started in plain terminals) + Adopt button
-        status: pending
+        status: in_progress
         effort: 3
         depends_on: [P2.2]
-        why: Installs/removes one tagged entry per event in ~/.claude/settings.json, with a backup. Off by default (D3).
+        why: "Install/remove logic unit-tested on temp files (preserves user hooks and key order, writes a backup). The Settings toggle has not been flipped against the real ~/.claude/settings.json yet - left for the owner."
 
   - id: P5
     name: Packaging and polish
@@ -249,13 +251,15 @@ phases:
         depends_on: [P1.4]
       - id: P5.2
         title: Keyboard shortcuts (Ctrl+1..9 switch, Ctrl+N new, Ctrl+K search, Ctrl+Shift+U next unread)
-        status: pending
+        status: in_progress
         effort: 2
+        why: "Done: Ctrl+Shift+N new, Ctrl+Shift+H history, Ctrl+Shift+U jump to next needs-you/unread. Pending: Ctrl+1..9, Ctrl+K. Plain Ctrl keys are left to Claude (Ctrl+H is backspace in terminals)."
         depends_on: [P2.4]
       - id: P5.3
         title: Search sessions by name / folder / last message
-        status: pending
+        status: done
         effort: 2
+        why: "Sidebar search (name/folder/last activity) and History filter."
         depends_on: [P4.3]
       - id: P5.4
         title: Per-session last-activity preview line in the sidebar (last prompt / last Claude summary)
@@ -274,8 +278,9 @@ phases:
         depends_on: [P1.2]
       - id: P6.2
         title: Worktree isolation option when starting a session (claude --worktree)
-        status: pending
+        status: in_progress
         effort: 1
+        why: "New session dialog passes --worktree; not exercised live yet."
         depends_on: [P1.3]
       - id: P6.3
         title: Diff pane - git diff of the session's folder, refreshed on Stop
@@ -296,24 +301,24 @@ phases:
 
 features:
   # ---- ContextWire's own core (why it exists) ----
-  - {id: F1, title: Real claude CLI console in every chat, source: own, area: console, status: planned, task: P1.2, note: "Full CLI fidelity - slash commands, permission prompts, skills, your TUI settings"}
-  - {id: F2, title: Chat-style sidebar grouped by workspace root, source: own, area: sessions, status: planned, task: P1.3}
-  - {id: F3, title: "Live status per session: working / needs you / done / idle / exited", source: own, area: status, status: planned, task: P2.4, note: "Driven by Claude Code hooks, not screen scraping"}
-  - {id: F4, title: Unread badges + highlight + needs-you floats to top, source: own, area: status, status: planned, task: P2.4, note: "Like a chat app; cleared when you open the session"}
-  - {id: F5, title: Windows toast + taskbar flash when a session needs you or finishes, source: own, area: notify, status: planned, task: P3.1}
+  - {id: F1, title: Real claude CLI console in every chat, source: own, area: console, status: shipped, task: P1.2, note: "Full CLI fidelity - slash commands, permission prompts, skills, your TUI settings"}
+  - {id: F2, title: Chat-style sidebar grouped by workspace root, source: own, area: sessions, status: shipped, task: P1.3}
+  - {id: F3, title: "Live status per session: working / needs you / done / idle / exited", source: own, area: status, status: shipped, task: P2.4, note: "Driven by Claude Code hooks, not screen scraping"}
+  - {id: F4, title: Unread badges + highlight + needs-you floats to top, source: own, area: status, status: shipped, task: P2.4, note: "Like a chat app; cleared when you open the session"}
+  - {id: F5, title: Windows toast + taskbar flash when a session needs you or finishes, source: own, area: notify, status: shipped, task: P3.1}
   - {id: F6, title: "Tray icon with counts, close-to-tray, autostart", source: own, area: notify, status: planned, task: P3.3}
-  - {id: F7, title: Restore open sessions after restart, source: own, area: sessions, status: planned, task: P4.2}
-  - {id: F8, title: History of past sessions across all workspaces + one-click resume, source: own, area: workspace, status: planned, task: P4.3}
-  - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: planned, task: P4.4, note: "The official app cannot see a running terminal session at all"}
+  - {id: F7, title: Restore open sessions after restart, source: own, area: sessions, status: shipped, task: P4.2}
+  - {id: F8, title: History of past sessions across all workspaces + one-click resume, source: own, area: workspace, status: shipped, task: P4.3}
+  - {id: F9, title: Track sessions started in plain terminals (opt-in global hooks) + adopt, source: own, area: status, status: building, task: P4.4, note: "The official app cannot see a running terminal session at all"}
   - {id: F10, title: Click a toast to jump to the session, source: own, area: notify, status: planned, task: P3.5}
-  - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: planned, task: P5.2}
+  - {id: F11, title: Keyboard shortcuts + jump to next unread, source: own, area: sessions, status: building, task: P5.2}
   - {id: F12, title: Last-activity preview line per session, source: own, area: status, status: planned, task: P5.4}
-  - {id: F13, title: Search sessions, source: own, area: sessions, status: planned, task: P5.3}
+  - {id: F13, title: Search sessions, source: own, area: sessions, status: shipped, task: P5.3}
   # ---- From the official Claude desktop app (code.claude.com/docs/en/desktop, 2026-10-01) ----
-  - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: planned, task: P1.3, note: "Covered by F2-F4"}
+  - {id: F20, title: Parallel sessions in a sidebar; filter by status/project; group by project, source: official, area: sessions, status: shipped, task: P1.3, note: "Covered by F2-F4"}
   - {id: F21, title: Two sessions side by side (Ctrl+Click), source: official, area: sessions, status: planned, task: P6.1}
-  - {id: F22, title: Git worktree isolation per session, source: official, area: sessions, status: planned, task: P6.2, note: "claude --worktree"}
-  - {id: F23, title: OS notification when a background session finishes, source: official, area: notify, status: planned, task: P3.1}
+  - {id: F22, title: Git worktree isolation per session, source: official, area: sessions, status: building, task: P6.2, note: "claude --worktree"}
+  - {id: F23, title: OS notification when a background session finishes, source: official, area: notify, status: shipped, task: P3.1}
   - {id: F24, title: Visual diff review with inline comments, source: official, area: review, status: planned, task: P6.3}
   - {id: F25, title: Integrated terminal pane in the session folder, source: official, area: console, status: planned, task: P6.4}
   - {id: F26, title: File pane (open and edit files), source: official, area: review, status: idea}

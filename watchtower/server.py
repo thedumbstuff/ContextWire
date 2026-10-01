@@ -46,6 +46,12 @@ REPO_ROOT = WATCHTOWER_DIR.parent
 STATIC_DIR = WATCHTOWER_DIR / "static"
 ROADMAP_NAME = "roadmap.yaml"
 
+# rustup puts cargo in ~/.cargo/bin; a watchtower started from a shell that
+# predates the install would otherwise report every cargo check as failing.
+_CARGO_BIN = Path.home() / ".cargo" / "bin"
+if _CARGO_BIN.is_dir() and str(_CARGO_BIN).lower() not in os.environ.get("PATH", "").lower():
+    os.environ["PATH"] = str(_CARGO_BIN) + os.pathsep + os.environ.get("PATH", "")
+
 CHECK_TTL_S = 60.0
 CMD_TIMEOUT_S = 120
 IMPORT_TIMEOUT_S = 120
