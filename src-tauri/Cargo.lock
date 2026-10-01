@@ -555,6 +555,7 @@ dependencies = [
  "tiny_http",
  "uuid",
  "which",
+ "windows",
 ]
 
 [[package]]

@@ -7,6 +7,8 @@ pub mod hookserver;
 pub mod pty;
 pub mod roadmaps;
 pub mod search;
+#[cfg(windows)]
+pub mod toast;
 pub mod workspaces;
 
 use std::path::{Path, PathBuf};
@@ -378,6 +380,34 @@ fn attention(app: AppHandle, critical: bool) {
     }
 }
 
+/// Windows toast that opens its session when clicked (the notification plugin
+/// cannot report clicks on desktop). Installed builds use the app's own
+/// identity; dev builds have no Start-menu shortcut, so - like the plugin - they
+/// borrow PowerShell's. Clicks are only seen while the toast is on screen;
+/// one already moved to the notification centre just brings the app up.
+#[tauri::command]
+fn toast(app: AppHandle, title: String, body: String, session: Option<String>) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let exe = exe_path();
+        let dir = exe.parent().map(|d| d.display().to_string().to_lowercase()).unwrap_or_default();
+        let dev = dir.ends_with(r"target\debug") || dir.ends_with(r"target\release");
+        let app_id = if dev { toast::POWERSHELL_APP_ID.to_string() } else { app.config().identifier.clone() };
+        let h = app.clone();
+        toast::show(&app_id, &title, &body, move || {
+            info!("toast clicked -> {}", session.as_deref().map(short).unwrap_or("-"));
+            show_main(&h);
+            let _ = h.emit("toast-clicked", json!({ "id": session }));
+        })
+        .map_err(|e| e.to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (app, title, body, session);
+        Err("toast is Windows-only; use the notification plugin".into())
+    }
+}
+
 #[tauri::command]
 fn window_focused(app: AppHandle) -> bool {
     main_window(&app).map_or(false, |w| w.is_focused().unwrap_or(false) && w.is_visible().unwrap_or(false))
@@ -524,6 +554,15 @@ pub fn run() {
                 }
             }
 
+            // installed build: match the toast identity so clicks reach this process
+            #[cfg(windows)]
+            {
+                let dir = exe_path().parent().map(|d| d.display().to_string().to_lowercase()).unwrap_or_default();
+                if !(dir.ends_with(r"target\debug") || dir.ends_with(r"target\release")) {
+                    toast::set_process_app_id(&app.config().identifier);
+                }
+            }
+
             if !minimized {
                 show_main(&handle);
             }
@@ -554,6 +593,7 @@ pub fn run() {
             global_hooks_set,
             attention,
             window_focused,
+            toast,
             tray_status,
             quit_app,
             ui_log,

@@ -378,11 +378,13 @@ function notify(s: Session, kind: "needs" | "done") {
   if (kind === "needs" && !settings.notifyNeeds) return;
   if (kind === "done" && !settings.notifyDone) return;
   invoke("attention", { critical: kind === "needs" }).catch(() => {});
-  if (!notifyOk) return;
   const where = basename(rootFor(s.cwd, roots));
-  sendNotification({
-    title: kind === "needs" ? `⚠ ${displayName(s)} needs you` : `✓ ${displayName(s)} is done`,
-    body: `${where}${s.lastMsg ? " · " + s.lastMsg : ""}`,
+  const title = kind === "needs" ? `⚠ ${displayName(s)} needs you` : `✓ ${displayName(s)} is done`;
+  const body = `${where}${s.lastMsg ? " · " + s.lastMsg : ""}`;
+  // our own toast opens the session when clicked; fall back to the plugin
+  invoke("toast", { title, body, session: s.id }).catch((e) => {
+    uiLog("warn", `toast: ${e}`);
+    if (notifyOk) sendNotification({ title, body });
   });
 }
 
@@ -433,6 +435,9 @@ async function wireEvents() {
     save();
   });
   // errors inside event callbacks are swallowed by the event system - log them
+  await listen<{ id: string | null }>("toast-clicked", (e) => {
+    if (e.payload.id && sessions.has(e.payload.id)) select(e.payload.id);
+  });
   await listen<HookEvent>("hook-event", (e) => {
     try {
       onHook(e.payload);
