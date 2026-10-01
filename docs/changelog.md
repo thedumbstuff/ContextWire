@@ -93,3 +93,4 @@
   PowerShell's identity (no Start-menu shortcut), so their clicks do nothing.
 - Fixed: a panel open at startup never loaded (Git said "No git repos found");
   an unreadable hook payload created a blank session.
+- v0.2.2 installed: shortcuts, Claude's reply in rows/toasts, worktree fixes, toast click opens the session, startup panel load fix.
