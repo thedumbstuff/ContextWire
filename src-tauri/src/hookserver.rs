@@ -19,12 +19,24 @@ pub struct Endpoint {
     pub pid: u32,
 }
 
-/// `%APPDATA%\ContextWire\endpoint.json`, overridable for tests.
+/// App data folder: `%APPDATA%\ContextWire` for release builds and
+/// `%APPDATA%\ContextWire-dev` for debug builds, so a dev instance never
+/// shares state, endpoint or logs with the installed app. `CONTEXTWIRE_DATA_DIR`
+/// overrides both.
+pub fn data_dir() -> PathBuf {
+    if let Ok(p) = std::env::var("CONTEXTWIRE_DATA_DIR") {
+        return PathBuf::from(p);
+    }
+    let name = if cfg!(debug_assertions) { "ContextWire-dev" } else { "ContextWire" };
+    dirs::config_dir().unwrap_or_else(std::env::temp_dir).join(name)
+}
+
+/// `<data dir>\endpoint.json`, overridable for tests.
 pub fn endpoint_file() -> PathBuf {
     if let Ok(p) = std::env::var("CONTEXTWIRE_ENDPOINT_FILE") {
         return PathBuf::from(p);
     }
-    dirs::config_dir().unwrap_or_else(std::env::temp_dir).join("ContextWire").join("endpoint.json")
+    data_dir().join("endpoint.json")
 }
 
 pub fn read_endpoint(path: &Path) -> Option<Endpoint> {

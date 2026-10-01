@@ -334,7 +334,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             let handle = app.handle().clone();
-            let data_dir = hookserver::endpoint_file().parent().map(Path::to_path_buf).unwrap_or_else(std::env::temp_dir);
+            let data_dir = hookserver::data_dir();
             let _ = std::fs::create_dir_all(&data_dir);
             let log_err = applog::init(&data_dir).err();
             info!(

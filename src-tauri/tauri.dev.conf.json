@@ -1,0 +1,9 @@
+{
+  "identifier": "com.shwetank.contextwire.dev",
+  "productName": "ContextWire Dev",
+  "app": {
+    "windows": [
+      { "label": "main", "title": "ContextWire Dev", "width": 1320, "height": 840, "minWidth": 760, "minHeight": 480, "visible": false }
+    ]
+  }
+}
