@@ -178,7 +178,7 @@ async fn list_dirs(path: String) -> Vec<DirEntry> {
 fn store_load(state: State<AppState>) -> Value {
     std::fs::read_to_string(state.data_dir.join("state.json"))
         .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
+        .and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok()) // tolerate a BOM from hand edits
         .unwrap_or(Value::Null)
 }
 
