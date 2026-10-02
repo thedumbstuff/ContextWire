@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { enable as autostartOn, disable as autostartOff, isEnabled as autostartIsOn } from "@tauri-apps/plugin-autostart";
@@ -15,7 +16,7 @@ import { SearchPanel, type SessionHits } from "./panels/search";
 import { GitView } from "./gitview/view";
 import { JobsPanel, STATUS_TEXT, type RunRecord } from "./jobs/panel";
 import { JobReport } from "./jobs/report";
-import { ago, applyHook, basename, firstLine, relativeTo, rootFor, sessionRank, topLevel } from "./status";
+import { ago, applyHook, basename, dropText, firstLine, relativeTo, rootFor, sessionRank, topLevel } from "./status";
 
 // ---------------------------------------------------------------- state
 
@@ -588,6 +589,32 @@ async function wireEvents() {
     if (activeId) hosts.get(activeId)?.focus();
   });
   new ResizeObserver(() => { if (activeId) hosts.get(activeId)?.refit(); }).observe($("terms"));
+  bindFileDrop();
+}
+
+// Files dragged from Explorer onto the console paste their paths, as in a
+// terminal. Tauri takes OS drops away from the page (the HTML drop event never
+// sees paths), so this listens to the webview's own drag-drop event.
+function bindFileDrop() {
+  const terms = $("terms");
+  const overConsole = (pos: { x: number; y: number }) => {
+    const r = window.devicePixelRatio || 1;
+    const el = document.elementFromPoint(pos.x / r, pos.y / r);
+    return !!el && !!el.closest("#terms") && !!activeId && hosts.has(activeId);
+  };
+  getCurrentWebview()
+    .onDragDropEvent(({ payload: p }) => {
+      if (p.type === "over") terms.classList.toggle("dropping", overConsole(p.position));
+      else if (p.type === "enter") terms.classList.toggle("dropping", overConsole(p.position));
+      else if (p.type === "leave") terms.classList.remove("dropping");
+      else if (p.type === "drop") {
+        terms.classList.remove("dropping");
+        if (!overConsole(p.position) || !p.paths.length) return;
+        hosts.get(activeId!)!.paste(dropText(p.paths));
+        uiLog("info", `dropped ${p.paths.length} path(s) on ${activeId!.slice(0, 8)}`);
+      }
+    })
+    .catch((e) => uiLog("warn", `drag-drop listener: ${e}`));
 }
 
 // ---------------------------------------------------------------- dialogs

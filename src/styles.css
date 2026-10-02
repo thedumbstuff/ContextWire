@@ -369,3 +369,4 @@ dialog:has(#jobName) { width: min(860px, calc(100vw - 32px)); }
 button.danger { color: #f3a3a1; border-color: #5a2a2d; }
 .jfs .row select, .jfs .row input { width: auto; }
 .jfs .row #jobPreset { min-width: 170px; }
+#terms.dropping { outline: 2px dashed var(--st-starting); outline-offset: -4px; }

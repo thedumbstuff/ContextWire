@@ -80,6 +80,13 @@ export class TermHost {
     this.term.write(bytes);
   }
 
+  /** Paste as if typed with Ctrl+V: bracketed when the app asked for it, so
+   *  Claude treats it as a paste (and turns image paths into attachments). */
+  paste(text: string) {
+    this.term.paste(text);
+    this.term.focus();
+  }
+
   notice(text: string) {
     this.term.write(`\r\n\x1b[90m── ${text} ──\x1b[0m\r\n`);
   }

@@ -8,7 +8,8 @@ hides the panel, as in PyCharm; drag the splitter to resize it, double-click it 
 
 Click **New session** (or `+` on a workspace header). Pick a workspace, optionally a repo
 inside it, a name, and whether to isolate the work in a git worktree. Then work in the
-console exactly as in a terminal.
+console exactly as in a terminal. Drag files from Explorer onto the console to paste
+their paths (quoted when they contain spaces); dropped images are attached by Claude.
 
 ## Tool windows on the rail
 

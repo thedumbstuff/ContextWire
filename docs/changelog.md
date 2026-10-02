@@ -131,3 +131,8 @@
   scheduled jobs, Git, architecture with a diagram, privacy and security,
   troubleshooting, development), linked from the README. README status line and
   limitations brought up to date (toast clicks work since v0.3).
+- v0.4.1: drag files from Explorer onto a console to paste their paths, as in a
+  terminal (quoted when they contain spaces, space separated, sent as a bracketed
+  paste so Claude attaches dropped images). The console shows a dashed outline
+  while you drag over it. Tauri swallows OS drops, so this uses the webview's
+  drag-drop event; `dropText` is unit-tested.

@@ -108,3 +108,9 @@ export function ago(ms: number, now = Date.now()): string {
   if (s < 86400) return `${Math.floor(s / 3600)}h`;
   return `${Math.floor(s / 86400)}d`;
 }
+
+/** Text pasted for files dropped on a console, like Windows Terminal: one path
+ *  per file, double-quoted when it contains spaces, separated by spaces. */
+export function dropText(paths: string[]): string {
+  return paths.filter(Boolean).map((p) => (/\s/.test(p) ? `"${p}"` : p)).join(" ");
+}

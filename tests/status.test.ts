@@ -1,7 +1,7 @@
 // node --experimental-strip-types --test tests/   (npm test)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyHook, rootFor, topLevel, relativeTo, sessionRank } from "../src/status.ts";
+import { applyHook, rootFor, topLevel, relativeTo, sessionRank, dropText } from "../src/status.ts";
 
 const ev = (hook_event_name: string, extra: Record<string, unknown> = {}) => ({ hook_event_name, ...extra });
 
@@ -65,4 +65,10 @@ test("needs-you sorts first, then unread, then recency", () => {
   const mk = (id: string, status: string, unread: number, lastEvent: number): any => ({ id, status, unread, lastEvent });
   const list = [mk("old", "idle", 0, 1), mk("new", "idle", 0, 5), mk("unread", "done", 1, 2), mk("needs", "needs", 0, 0)];
   assert.deepEqual(list.sort(sessionRank).map((s) => s.id), ["needs", "unread", "new", "old"]);
+});
+
+test("dropped files paste like Windows Terminal: quoted only with spaces, space separated", () => {
+  assert.equal(dropText([String.raw`C:\a\b.txt`]), String.raw`C:\a\b.txt`);
+  assert.equal(dropText([String.raw`C:\My Docs\shot 1.png`, String.raw`D:\x.md`]), String.raw`"C:\My Docs\shot 1.png" D:\x.md`);
+  assert.equal(dropText([]), "");
 });
