@@ -127,3 +127,7 @@
   resumes the run's conversation. Verified with the real CLI: a read-only
   "Docs digest" job ran unattended in 24 s and produced a correct report.
   Template: Website views (Cloudflare GraphQL Analytics, curl only).
+- Docs: user and developer documentation in `docs/` (getting started, using the app,
+  scheduled jobs, Git, architecture with a diagram, privacy and security,
+  troubleshooting, development), linked from the README. README status line and
+  limitations brought up to date (toast clicks work since v0.3).

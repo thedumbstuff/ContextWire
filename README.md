@@ -15,10 +15,13 @@
   <img src="docs/images/needs-you.png" width="49%" alt="A session waiting for permission: red row floated to the top">
 </p>
 
-> **Status:** early (v0.1.x), Windows 10/11 only. Used daily by its author; expect rough edges.
+> **Status:** early (v0.4.x), Windows 10/11 only. Used daily by its author; expect rough edges.
 > Not affiliated with Anthropic.
 
 ---
+
+**Documentation:** [docs/](docs/README.md) - getting started, using the app, scheduled
+agent jobs, Git, architecture, privacy and security, troubleshooting, development.
 
 ## Why
 
@@ -137,8 +140,8 @@ within about half a second, so it can never block or break Claude - even when
 ContextWire is not running. Nothing in your global Claude settings changes unless you
 turn on *Track sessions started in plain terminals*.
 
-More detail: [PLAN.md](PLAN.md) (design and decisions) and
-[docs/changelog.md](docs/changelog.md).
+More detail: [docs/architecture.md](docs/architecture.md), [PLAN.md](PLAN.md) (design and
+decisions) and [docs/changelog.md](docs/changelog.md).
 
 ## Privacy and security
 
@@ -155,7 +158,6 @@ More detail: [PLAN.md](PLAN.md) (design and decisions) and
 - A Claude session can be attached to one console at a time: ContextWire replaces
   terminal windows, it does not mirror them. Use *Adopt here* to move a session in.
 - Quitting the app ends its consoles (they are restored with `--resume` next time).
-- Clicking a toast does not open the session yet.
 - Windows only for now; the Rust and UI code is mostly portable, contributions welcome.
 
 ## Development
